@@ -2,7 +2,7 @@
 
 SquiggleSage is a Firefox-first writing assistant whose checks run entirely inside the browser.
 
-Version `0.1.1` supports ordinary `textarea`, text `input`, and `contenteditable` editors. Firefox provides native spelling dictionaries and red spelling underlines. SquiggleSage adds cautious English grammar, capitalization, typography, and style rules with prominent red squiggles and clickable corrections.
+Version `0.1.2` supports ordinary `textarea`, text `input`, and `contenteditable` editors. Firefox provides native spelling dictionaries and red spelling underlines. SquiggleSage adds cautious English grammar, capitalization, typography, and style rules with prominent red squiggles and clickable corrections.
 
 ## What works now
 
