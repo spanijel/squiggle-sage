@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>SquiggleSage settings</title>
+    <link rel="stylesheet" href="options.css">
+    <script defer src="../shared/defaults.js"></script>
+    <script defer src="../core/checker.js"></script>
+    <script defer src="options.js"></script>
+  </head>
+  <body>
+    <header class="page-header">
+      <div class="header-inner">
+        <div class="brand-mark" aria-hidden="true">SS</div>
+        <div>
+          <div class="title-line">
+            <h1>SquiggleSage settings</h1>
+            <span class="local-badge">Local only</span>
+          </div>
+          <p>Choose how writing checks work in Firefox.</p>
+        </div>
+      </div>
+    </header>
+
+    <main class="page-shell">
+      <form id="settings-form" novalidate>
+        <section class="settings-card" aria-labelledby="general-heading">
+          <div class="section-heading">
+            <div>
+              <span class="section-number" aria-hidden="true">01</span>
+              <h2 id="general-heading">Writing assistance</h2>
+            </div>
+            <p>Turn each kind of feedback on or off.</p>
+          </div>
+
+          <div class="toggle-list">
+            <label class="toggle-row emphasis-row">
+              <span class="toggle-copy">
+                <strong>Enable SquiggleSage</strong>
+                <small>Check supported text fields while you type.</small>
+              </span>
+              <span class="switch">
+                <input id="enabled" name="enabled" type="checkbox">
+                <span class="switch-track" aria-hidden="true"></span>
+              </span>
+            </label>
+
+            <label class="toggle-row">
+              <span class="toggle-copy">
+                <strong>Firefox spelling</strong>
+                <small>Keep Firefox’s native red spelling underlines enabled.</small>
+              </span>
+              <span class="switch">
+                <input id="native-spellcheck" name="nativeSpellcheck" type="checkbox">
+                <span class="switch-track" aria-hidden="true"></span>
+              </span>
+            </label>
+
+            <div class="toggle-grid">
+              <label class="toggle-row compact-row">
+                <span class="toggle-copy"><strong>Grammar</strong><small>Sentence-level mistakes</small></span>
+                <span class="switch">
+                  <input id="grammar" name="grammar" type="checkbox">
+                  <span class="switch-track" aria-hidden="true"></span>
+                </span>
+              </label>
+              <label class="toggle-row compact-row">
+                <span class="toggle-copy"><strong>Style</strong><small>Clarity and wording</small></span>
+                <span class="switch">
+                  <input id="style" name="style" type="checkbox">
+                  <span class="switch-track" aria-hidden="true"></span>
+                </span>
+              </label>
+              <label class="toggle-row compact-row">
+                <span class="toggle-copy"><strong>Typography</strong><small>Spacing and punctuation</small></span>
+                <span class="switch">
+                  <input id="typography" name="typography" type="checkbox">
+                  <span class="switch-track" aria-hidden="true"></span>
+                </span>
+              </label>
+              <label class="toggle-row compact-row">
+                <span class="toggle-copy"><strong>Capitalization</strong><small>Sentence and word case</small></span>
+                <span class="switch">
+                  <input id="capitalization" name="capitalization" type="checkbox">
+                  <span class="switch-track" aria-hidden="true"></span>
+                </span>
+              </label>
+            </div>
+          </div>
+        </section>
+
+        <section class="settings-card" aria-labelledby="timing-heading">
+          <div class="section-heading">
+            <div>
+              <span class="section-number" aria-hidden="true">02</span>
+              <h2 id="timing-heading">Checking timing</h2>
+            </div>
+            <p>Control when built-in English checks run after you type.</p>
+          </div>
+
+          <div class="field-grid timing-grid">
+            <label class="field">
+              <span>Typing delay</span>
+              <span class="number-field">
+                <input id="debounce-ms" name="debounceMs" type="number" min="100" max="5000" step="50" inputmode="numeric">
+                <span>ms</span>
+              </span>
+              <small>Wait after typing before a check starts.</small>
+            </label>
+          </div>
+        </section>
+
+        <section class="settings-card" aria-labelledby="sites-heading">
+          <div class="section-heading">
+            <div>
+              <span class="section-number" aria-hidden="true">03</span>
+              <h2 id="sites-heading">Disabled websites</h2>
+            </div>
+            <p>SquiggleSage will stay inactive on these exact domains.</p>
+          </div>
+
+          <label class="field full-field" for="disabled-sites">
+            <span>One domain per line</span>
+            <textarea id="disabled-sites" name="disabledSites" rows="4" spellcheck="false" placeholder="mail.example.com&#10;intranet.example.org"></textarea>
+            <small>Enter hostnames only - without a scheme, path, port, or wildcard.</small>
+          </label>
+        </section>
+
+        <section class="settings-card" aria-labelledby="rules-heading">
+          <div class="section-heading">
+            <div>
+              <span class="section-number" aria-hidden="true">04</span>
+              <h2 id="rules-heading">Individual rules</h2>
+            </div>
+            <p>Fine-tune rules without turning off an entire feedback category.</p>
+          </div>
+          <div id="rules-container" class="rules-container" aria-live="polite"></div>
+        </section>
+
+        <aside class="privacy-note" aria-labelledby="privacy-heading">
+          <span class="privacy-icon" aria-hidden="true">●</span>
+          <div>
+            <h2 id="privacy-heading">Your writing stays in Firefox</h2>
+            <p>Spelling and built-in English grammar checks run inside Firefox. Your text is never transmitted to a server or external service.</p>
+          </div>
+        </aside>
+
+        <div class="action-bar">
+          <p id="save-status" role="status" aria-live="polite"></p>
+          <div class="actions">
+            <button id="reset-button" class="button secondary-button" type="button">Reset to defaults</button>
+            <button id="save-button" class="button primary-button" type="submit">Save settings</button>
+          </div>
+        </div>
+      </form>
+    </main>
+  </body>
+</html>

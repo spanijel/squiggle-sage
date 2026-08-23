@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="SquiggleSage">
+  <title>SquiggleSage</title>
+  <rect x="7" y="7" width="114" height="114" rx="29" fill="#1e1b4b"/>
+  <path d="M88 34c-10-9-36-8-45 3-11 14 3 22 20 26 18 4 27 11 21 23-8 16-39 15-49 3" fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round" stroke-width="11"/>
+  <path d="M24 103q8-9 16 0t16 0t16 0t16 0t16 0" fill="none" stroke="#ef4444" stroke-linecap="round" stroke-width="6"/>
+</svg>

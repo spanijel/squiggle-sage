@@ -1,0 +1,67 @@
+{
+  "manifest_version": 3,
+  "name": "SquiggleSage",
+  "short_name": "SquiggleSage",
+  "version": "0.1.1",
+  "description": "Local spelling and English writing suggestions for the Firefox browser. No text is sent to a server.",
+  "incognito": "not_allowed",
+  "permissions": [
+    "activeTab",
+    "storage"
+  ],
+  "action": {
+    "default_title": "SquiggleSage",
+    "default_icon": {
+      "16": "assets/icon.svg",
+      "32": "assets/icon.svg",
+      "48": "assets/icon.svg",
+      "96": "assets/icon.svg"
+    },
+    "default_popup": "src/ui/popup.html"
+  },
+  "icons": {
+    "16": "assets/icon.svg",
+    "32": "assets/icon.svg",
+    "48": "assets/icon.svg",
+    "96": "assets/icon.svg"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "http://*/*",
+        "https://*/*",
+        "file:///*"
+      ],
+      "all_frames": true,
+      "match_about_blank": true,
+      "run_at": "document_idle",
+      "js": [
+        "src/shared/defaults.js",
+        "src/core/checker.js",
+        "src/content/highlighter.js",
+        "src/content/content.js"
+      ],
+      "css": [
+        "src/content/content.css"
+      ]
+    }
+  ],
+  "options_ui": {
+    "page": "src/ui/options.html",
+    "open_in_tab": true
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'none'"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "squiggle-sage@spanijel.github.io",
+      "strict_min_version": "140.0",
+      "data_collection_permissions": {
+        "required": [
+          "none"
+        ]
+      }
+    }
+  }
+}

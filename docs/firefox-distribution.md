@@ -1,0 +1,59 @@
+# Firefox distribution and signing
+
+## Why signing is required
+
+Standard Firefox Release and Beta builds install extensions persistently only when Mozilla has signed them. Renaming a ZIP file to `.xpi` creates a valid extension archive, but it does not add Mozilla's signature.
+
+SquiggleSage uses one stable Gecko identity for updates:
+
+```text
+squiggle-sage@spanijel.github.io
+```
+
+## Build the distribution bundle
+
+```bash
+cd ~/squiggle-sage
+node scripts/validate.cjs
+node --test
+node scripts/build.cjs
+```
+
+The build produces:
+
+- `dist/squiggle-sage-<version>-unsigned.xpi`
+- `dist/squiggle-sage-<version>-source.zip`
+- `dist/SHA256SUMS-<version>.txt`
+
+The XPI contains only the runtime files declared by `scripts/build.cjs`. The source ZIP contains readable runtime code, documentation, tests, and build scripts. No dependency installation or code generation is required. Building requires Node.js 20 or newer and Info-ZIP 3.0 on `PATH` as `zip`. See [../BUILD.md](../BUILD.md).
+
+## Submit a public Mozilla Add-ons listing
+
+1. Sign in to the [Mozilla Add-ons Developer Hub](https://addons.mozilla.org/developers/).
+2. Start a new add-on submission and choose **On this site**.
+3. Upload `dist/squiggle-sage-<version>-unsigned.xpi`.
+4. If Mozilla requests source code, upload `dist/squiggle-sage-<version>-source.zip`.
+5. Complete Mozilla's privacy and licensing declarations using `PRIVACY.md` and `LICENSE` as the source of truth.
+6. Explain that content scripts need HTTP, HTTPS, and local-file page access to find the focused supported editor, while all processing remains local.
+7. Use [amo-submission.md](amo-submission.md) for the listing copy, permission explanation, reviewer notes, and test procedure.
+8. Complete the public listing details and submit the version for validation or review.
+
+After approval, Mozilla signs the version and Firefox can install it permanently from the public listing. Publicly listed versions also use Mozilla's normal update channel.
+
+Do not paste Mozilla API keys or secrets into chat, source files, Git history, or shell commands.
+
+## Install a signed build on another Firefox
+
+For a public listing, open its Mozilla Add-ons page in the other Firefox and select **Add to Firefox**. If Mozilla instead provides a signed file, use the gear menu in `about:addons`, select **Install Add-on From File…**, and choose the signed `.xpi`.
+
+Pin **SquiggleSage** from Firefox's Extensions menu if desired. The unsigned XPI remains suitable for temporary testing through `about:debugging`, but standard Firefox rejects it as a permanent installation.
+
+SquiggleSage is an independent project and is not affiliated with or endorsed by Mozilla.
+
+Firefox is a trademark of the Mozilla Foundation in the U.S. and other countries.
+
+## Official Mozilla references
+
+- [Add-on signing in Firefox](https://support.mozilla.org/en-US/kb/add-on-signing-in-firefox)
+- [Signing and distribution overview](https://extensionworkshop.com/documentation/publish/signing-and-distribution-overview/)
+- [Submitting an add-on](https://extensionworkshop.com/documentation/publish/submitting-an-add-on/)

@@ -1,0 +1,18 @@
+{
+  "name": "squiggle-sage",
+  "version": "0.1.1",
+  "private": true,
+  "description": "SquiggleSage - a Firefox-first, local writing assistant.",
+  "scripts": {
+    "check": "node scripts/validate.cjs && npm test",
+    "check:full": "npm run check && npm run lint:webext",
+    "test": "node --test",
+    "smoke:bidi": "node scripts/firefox-smoke.cjs",
+    "lint:webext": "web-ext lint --source-dir . --warnings-as-errors --ignore-files package.json package-lock.json README.md LICENSE docs/** tests/** test/** scripts/** node_modules/** dist/** .git/** .gitignore",
+    "build": "node scripts/build.cjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT"
+}

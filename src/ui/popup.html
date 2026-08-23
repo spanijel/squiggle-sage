@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>SquiggleSage</title>
+    <link rel="stylesheet" href="popup.css">
+    <script defer src="../shared/defaults.js"></script>
+    <script defer src="popup.js"></script>
+  </head>
+  <body>
+    <main class="popup-shell">
+      <header class="brand-row">
+        <div class="brand-mark" aria-hidden="true">SS</div>
+        <div class="brand-copy">
+          <div class="title-row">
+            <h1>SquiggleSage</h1>
+            <span class="local-badge">Local only</span>
+          </div>
+          <p>Private writing checks in Firefox</p>
+        </div>
+      </header>
+
+      <section class="panel primary-control" aria-labelledby="checking-title">
+        <div>
+          <h2 id="checking-title">Writing checks</h2>
+          <p id="checking-description">Check text while you type</p>
+        </div>
+        <label class="switch">
+          <span class="visually-hidden">Enable writing checks everywhere</span>
+          <input id="enabled-toggle" type="checkbox" aria-describedby="checking-description">
+          <span class="switch-track" aria-hidden="true"></span>
+        </label>
+      </section>
+
+      <section class="panel site-panel" aria-labelledby="site-title">
+        <div class="site-copy">
+          <span class="eyebrow">Current website</span>
+          <h2 id="site-title">Finding this tab…</h2>
+          <p id="site-state">Checking site settings</p>
+        </div>
+        <button id="site-toggle" class="button secondary" type="button" disabled>
+          Change site access
+        </button>
+      </section>
+
+      <section class="checker-status" aria-labelledby="checker-title">
+        <span id="checker-dot" class="status-dot" aria-hidden="true"></span>
+        <div>
+          <span class="eyebrow">Checking engine</span>
+          <h2 id="checker-title">Loading…</h2>
+          <p id="checker-detail">Reading your local settings</p>
+        </div>
+      </section>
+
+      <p id="popup-status" class="status-message" role="status" aria-live="polite" hidden></p>
+
+      <footer>
+        <button id="open-options" class="settings-link" type="button">
+          <span>Open settings</span>
+          <span aria-hidden="true">→</span>
+        </button>
+      </footer>
+    </main>
+  </body>
+</html>

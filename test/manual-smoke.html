@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SquiggleSage manual smoke page</title>
+  <style>
+    :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
+    body { margin: 2rem auto; max-width: 760px; padding: 0 1rem; }
+    label { display: grid; font-weight: 700; gap: .45rem; margin: 1.5rem 0; }
+    input, textarea, [contenteditable] { border: 1px solid #8888; border-radius: .6rem; font: 18px/1.5 system-ui, sans-serif; padding: .8rem; }
+    textarea { min-height: 130px; resize: vertical; }
+    [contenteditable] { min-height: 120px; }
+    code { background: #8882; border-radius: .25rem; padding: .1rem .3rem; }
+  </style>
+</head>
+<body>
+  <h1>SquiggleSage smoke page</h1>
+  <p>Focus each editor. Firefox should underline <code>mispeling</code> in red. SquiggleSage should use strong red squiggles for the repeated word, spacing, lowercase “i”, and “could of”. Drag the numbered badge to reposition it; click it to open suggestions.</p>
+  <label>
+    Single-line input
+    <input type="text" value="i could of fixed the the mispeling">
+  </label>
+  <label>
+    Textarea
+    <textarea>this is is a local test ,and i could of written it better. The mispeling stays private.</textarea>
+  </label>
+  <label>
+    Rich text editor
+    <div contenteditable><div>this is is rich text.</div><div>i would of corrected<br>the mispeling.</div></div>
+  </label>
+</body>
+</html>
