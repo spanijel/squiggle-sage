@@ -1,6 +1,6 @@
 # SquiggleSage capabilities
 
-Version `0.1.2` provides local writing assistance for ordinary Firefox text editors.
+Version `0.1.3` provides local writing assistance for ordinary Firefox text editors.
 
 ## Current capabilities
 

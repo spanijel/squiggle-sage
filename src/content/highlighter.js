@@ -328,6 +328,9 @@
         .badge[data-dragging="true"] { cursor: grabbing; }
         .card { background: Canvas; border: 1px solid color-mix(in srgb, CanvasText 18%, transparent); border-radius: 12px; box-shadow: 0 14px 38px #0004; color: CanvasText; display: grid; font: 14px/1.35 system-ui, sans-serif; gap: 10px; max-width: min(340px, calc(100vw - 16px)); padding: 14px; pointer-events: auto; position: fixed; width: 320px; }
         .card[hidden] { display: none; }
+        .close { align-items: center; background: transparent; border: 0; border-radius: 999px; color: CanvasText; cursor: pointer; display: flex; font: 700 18px/1 system-ui, sans-serif; height: 28px; justify-content: center; padding: 0; position: absolute; right: 7px; top: 7px; width: 28px; }
+        .close:hover { background: color-mix(in srgb, CanvasText 10%, transparent); }
+        .close:focus-visible { outline: 2px solid #0f766e; outline-offset: 1px; }
         .category { color: #0f766e; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
         .message { font-weight: 650; overflow-wrap: anywhere; }
         .replacements { display: flex; flex-wrap: wrap; gap: 7px; }
@@ -374,10 +377,22 @@
           this.hideCard();
         }
       };
+      this.onDocumentKeyDown = (event) => {
+        if (event.key === "Escape" && !this.card.hidden) {
+          event.preventDefault();
+          this.hideCard();
+          this.badge.focus({ preventScroll: true });
+        }
+      };
       document.addEventListener("pointerdown", this.onDocumentPointerDown, true);
+      document.addEventListener("keydown", this.onDocumentKeyDown, true);
     }
 
     openBadgeCard() {
+      if (!this.card.hidden) {
+        this.hideCard();
+        return;
+      }
       const firstIssue = this.issues.values().next().value;
       if (firstIssue) {
         this.showIssue(firstIssue, this.badge.getBoundingClientRect());
@@ -534,6 +549,12 @@
     render(element, issues) {
       this.activeElement = element;
       this.issues = new Map(issues.map((issue) => [issue.id, issue]));
+      if (
+        !this.card.hidden &&
+        (this.cardIssueId === null ? issues.length > 0 : !this.issues.has(this.cardIssueId))
+      ) {
+        this.hideCard();
+      }
       this.layer.replaceChildren();
       const rectsByIssue = calculateIssueRects(element, issues);
       for (const issue of issues) {
@@ -614,7 +635,9 @@
     }
 
     showStatus(anchor) {
+      this.cardIssueId = null;
       this.card.replaceChildren(
+        this.makeCloseButton(),
         makeElement("div", "category", "SquiggleSage"),
         makeElement("div", "message", "No local grammar suggestions in this field."),
         makeElement("div", "privacy", "Firefox handles red spelling underlines locally.")
@@ -623,6 +646,7 @@
     }
 
     showIssue(issue, anchor) {
+      this.cardIssueId = issue.id;
       const category = makeElement("div", "category", issue.category || "Writing");
       const message = makeElement("div", "message", issue.message || "Writing suggestion");
       const replacements = makeElement("div", "replacements");
@@ -651,13 +675,25 @@
         this.onAction({ type: "disable-rule", issue });
       });
       actions.append(ignore, disable);
-      const children = [category, message];
+      const children = [this.makeCloseButton(), category, message];
       if (replacements.childElementCount) {
         children.push(replacements);
       }
       children.push(actions, makeElement("div", "privacy", "Checked locally - editor text is not stored."));
       this.card.replaceChildren(...children);
       this.positionCard(anchor);
+    }
+
+    makeCloseButton() {
+      const close = makeElement("button", "close", "\u00d7");
+      close.type = "button";
+      close.setAttribute("aria-label", "Close SquiggleSage message");
+      close.title = "Close";
+      close.addEventListener("click", () => {
+        this.hideCard();
+        this.badge.focus({ preventScroll: true });
+      });
+      return close;
     }
 
     positionCard(anchor) {
@@ -693,6 +729,7 @@
 
     hideCard() {
       this.card.hidden = true;
+      this.cardIssueId = undefined;
       this.host.dataset.squiggleSageCardVisible = "false";
       this.host.dataset.squiggleSageReplacementCount = "0";
       delete this.host.dataset.squiggleSageFirstReplacementX;
@@ -728,6 +765,7 @@
 
     destroy() {
       document.removeEventListener("pointerdown", this.onDocumentPointerDown, true);
+      document.removeEventListener("keydown", this.onDocumentKeyDown, true);
       this.host.remove();
     }
   }

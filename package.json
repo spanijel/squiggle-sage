@@ -1,6 +1,6 @@
 {
   "name": "squiggle-sage",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "private": true,
   "description": "SquiggleSage - a Firefox-first, local writing assistant.",
   "scripts": {

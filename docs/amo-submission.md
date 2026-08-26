@@ -21,7 +21,7 @@ All JavaScript, CSS, and HTML in the submitted XPI is human-readable and is not 
 
 ## Test procedure
 
-1. Install the XPI on Firefox 140 or later.
+1. Install the XPI on Firefox 142 or later.
 2. Open `test/manual-smoke.html` from the source package.
 3. Focus an editor containing the supplied sample text.
 4. Verify the red writing markers and numbered badge.

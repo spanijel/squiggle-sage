@@ -25,7 +25,7 @@ The build produces:
 - `dist/squiggle-sage-<version>-source.zip`
 - `dist/SHA256SUMS-<version>.txt`
 
-The XPI contains only the runtime files declared by `scripts/build.cjs`. The source ZIP contains readable runtime code, documentation, tests, and build scripts. No dependency installation or code generation is required. Building requires Node.js 20 or newer and Info-ZIP 3.0 on `PATH` as `zip`. See [../BUILD.md](../BUILD.md).
+The XPI contains only the runtime files declared by `scripts/build.cjs`. The source ZIP contains readable runtime code, documentation, tests, and build scripts. No dependency installation or code generation is required. Building requires Node.js 20 or newer and either Info-ZIP 3.0 on `PATH` as `zip` or the built-in `tar.exe` on Windows. See [../BUILD.md](../BUILD.md).
 
 ## Submit a public Mozilla Add-ons listing
 

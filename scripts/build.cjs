@@ -64,6 +64,27 @@ function createArchive(outputPath, entries) {
     encoding: "utf8"
   });
 
+  if (result.error?.code === "ENOENT" && process.platform === "win32") {
+    const archivePath = outputPath.toLowerCase().endsWith(".zip")
+      ? outputPath
+      : `${outputPath}.zip`;
+    const fallback = childProcess.spawnSync(
+      "tar.exe",
+      ["-a", "-c", "-f", archivePath, ...entries],
+      { cwd: root, encoding: "utf8" }
+    );
+    if (fallback.error) {
+      throw fallback.error;
+    }
+    if (fallback.status !== 0) {
+      process.stderr.write(fallback.stderr || "tar.exe ZIP creation failed\n");
+      process.exit(fallback.status || 1);
+    }
+    if (archivePath !== outputPath) {
+      fs.renameSync(archivePath, outputPath);
+    }
+    return;
+  }
   if (result.error) {
     throw result.error;
   }

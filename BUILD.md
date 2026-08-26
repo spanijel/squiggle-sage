@@ -3,7 +3,7 @@
 ## Requirements
 
 - Node.js 20 or newer.
-- Info-ZIP 3.0 available on `PATH` as `zip`.
+- Info-ZIP 3.0 available on `PATH` as `zip`, or the built-in `tar.exe` on Windows.
 
 No `npm install`, network access, transpilation, bundling, minification, code generation, or third-party library is required. The XPI contains the readable runtime files listed in `scripts/build.cjs`.
 

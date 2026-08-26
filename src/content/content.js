@@ -365,6 +365,17 @@
     activeController = new EditorController(element);
   }
 
+  function deactivateActiveEditor() {
+    if (!activeController) {
+      return;
+    }
+    const element = activeController.element;
+    activeController.destroy();
+    activeController = null;
+    restoreNativeSpellcheck(element);
+    overlay?.clear();
+  }
+
   function refreshAfterSettingsChange() {
     if (!siteCheckingEnabled()) {
       restoreAllSpellcheck();
@@ -387,17 +398,31 @@
   }
 
   function activateFromEvent(event) {
-    const element = editableFromPath(event.composedPath());
+    const path = event.composedPath();
+    const element = editableFromPath(path);
     if (element) {
       activate(element);
+    } else if (!overlay || !path.includes(overlay.host)) {
+      overlay?.hideCard();
     }
   }
+
+  const editorRemovalObserver = new MutationObserver(() => {
+    if (activeController && !activeController.element.isConnected) {
+      deactivateActiveEditor();
+    }
+  });
+  editorRemovalObserver.observe(document.documentElement, { childList: true, subtree: true });
 
   document.addEventListener("pointerdown", activateFromEvent, true);
   document.addEventListener("focus", activateFromEvent, true);
   document.addEventListener("scroll", () => activeController?.render(), true);
   global.addEventListener("resize", () => activeController?.render());
-  global.addEventListener("pagehide", restoreAllSpellcheck, { once: true });
+  global.addEventListener("pagehide", () => {
+    editorRemovalObserver.disconnect();
+    deactivateActiveEditor();
+    restoreAllSpellcheck();
+  }, { once: true });
   extensionApi.storage.onChanged.addListener((changes, area) => {
     if (area === "local" && changes.settings) {
       settings = defaultsApi.normalizeSettings(changes.settings.newValue || {});

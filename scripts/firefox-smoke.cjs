@@ -310,6 +310,15 @@ async function run() {
         return JSON.stringify(host?.dataset.squiggleSageCardVisible === "true");
       })()`
     );
+    await clickAt(client, context, afterDrag.badgeX, afterDrag.badgeY);
+    const badgeCardToggledClosed = await waitFor(
+      client,
+      context,
+      `(() => {
+        const host = document.querySelector("#squiggle-sage-overlay-host");
+        return JSON.stringify(host?.dataset.squiggleSageCardVisible === "false");
+      })()`
+    );
     const focusAfterBadgeClick = await evaluate(
       client,
       context,
@@ -387,15 +396,83 @@ async function run() {
       })()`
     );
     await clickAt(client, context, richCard.firstReplacementX, richCard.firstReplacementY);
-    await waitFor(
-      client,
-      context,
-      `JSON.stringify(document.querySelector("[contenteditable]").innerText.includes("i would have corrected"))`
-    );
+    try {
+      await waitFor(
+        client,
+        context,
+        `JSON.stringify(document.querySelector("[contenteditable]").innerText.includes("i would have corrected"))`
+      );
+    } catch (error) {
+      const richDiagnostics = await evaluate(
+        client,
+        context,
+        `(() => JSON.stringify({
+          text: document.querySelector("[contenteditable]")?.innerText || null,
+          overlay: JSON.parse(${readOverlayExpression()})
+        }))()`
+      );
+      const errors = client.events
+        .filter((event) => event.method === "log.entryAdded")
+        .map((event) => event.params)
+        .filter((entry) => entry.level === "error")
+        .map((entry) => entry.text);
+      throw new Error(`${error.message}\nRich-text diagnostics: ${JSON.stringify(richDiagnostics)}\nBrowser errors: ${JSON.stringify(errors)}`);
+    }
     const richTextAfter = await evaluate(
       client,
       context,
       `JSON.stringify(document.querySelector("[contenteditable]").innerText)`
+    );
+    await evaluate(
+      client,
+      context,
+      `(() => {
+        const editor = document.querySelector("[contenteditable]");
+        editor.textContent = "All good.";
+        editor.dispatchEvent(new InputEvent("input", { bubbles: true, composed: true, inputType: "insertText" }));
+        return JSON.stringify(true);
+      })()`
+    );
+    const cleanEditorOverlay = await waitFor(
+      client,
+      context,
+      `(() => {
+        const host = document.querySelector("#squiggle-sage-overlay-host");
+        if (!host || host.dataset.squiggleSageBadgeText !== "✓" || Number(host.dataset.squiggleSageIssueCount) !== 0) {
+          return JSON.stringify(null);
+        }
+        return ${readOverlayExpression()};
+      })()`
+    );
+    await clickAt(client, context, cleanEditorOverlay.badgeX, cleanEditorOverlay.badgeY);
+    await waitFor(
+      client,
+      context,
+      `(() => {
+        const host = document.querySelector("#squiggle-sage-overlay-host");
+        return JSON.stringify(host?.dataset.squiggleSageCardVisible === "true");
+      })()`
+    );
+    await evaluate(
+      client,
+      context,
+      `(() => {
+        document.querySelector("[contenteditable]").remove();
+        return JSON.stringify(true);
+      })()`
+    );
+    const removedEditorOverlayCleared = await waitFor(
+      client,
+      context,
+      `(() => {
+        const host = document.querySelector("#squiggle-sage-overlay-host");
+        return JSON.stringify(Boolean(
+          host &&
+          host.dataset.squiggleSageCardVisible === "false" &&
+          host.dataset.squiggleSageBadgeText === "" &&
+          Number(host.dataset.squiggleSageIssueCount) === 0
+        ));
+      })()`
     );
 
     const browserErrors = client.events
@@ -414,6 +491,7 @@ async function run() {
       && focusAfterDrag
       && afterRender.badgeMoved
       && badgeCard
+      && badgeCardToggledClosed
       && focusAfterBadgeClick
       && card.cardVisible
       && card.replacementCount > 0
@@ -423,6 +501,8 @@ async function run() {
       && inputResult.markerCount >= 3
       && richTextResult.markerCount >= 4
       && richTextAfter.includes("i would have corrected")
+      && cleanEditorOverlay.badgeText === "✓"
+      && removedEditorOverlayCleared
       && browserErrors.length === 0;
     const receipt = {
       passed,
@@ -433,6 +513,7 @@ async function run() {
       focusAfterDrag,
       afterRender,
       badgeCard,
+      badgeCardToggledClosed,
       focusAfterBadgeClick,
       card,
       after,
@@ -440,6 +521,8 @@ async function run() {
       richTextResult,
       richCard,
       richTextAfter,
+      cleanEditorOverlay,
+      removedEditorOverlayCleared,
       screenshotPath,
       browserErrors
     };
