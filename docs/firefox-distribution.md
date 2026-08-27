@@ -25,7 +25,7 @@ The build produces:
 - `dist/squiggle-sage-<version>-source.zip`
 - `dist/SHA256SUMS-<version>.txt`
 
-The XPI contains only the runtime files declared by `scripts/build.cjs`, including readable Typo.js source, the American-English SCOWL/Hunspell dictionary, and both third-party license files. The source ZIP contains readable runtime code, documentation, tests, and build scripts. No dependency installation, download, minification, transpilation, bundling, or code generation is required. Building requires Node.js 20 or newer and either Info-ZIP 3.0 on `PATH` as `zip` or the built-in `tar.exe` on Windows. See [../BUILD.md](../BUILD.md).
+The XPI contains only the runtime files declared by `scripts/build.cjs`, including an exact, unmodified copy of the official `typo-js@1.3.2` npm release file, the American-English SCOWL/Hunspell dictionary, and both third-party license files. SquiggleSage passes complete packaged dictionary strings to Typo.js, so its optional loader is not invoked. The source ZIP contains readable runtime code, documentation, tests, and build scripts. No dependency installation, download, minification, transpilation, bundling, or code generation is required. Building requires Node.js 20 or newer and either Info-ZIP 3.0 on `PATH` as `zip` or the built-in `tar.exe` on Windows. See [../BUILD.md](../BUILD.md).
 
 ## Submit an update to the public Mozilla Add-ons listing
 
@@ -36,9 +36,9 @@ The XPI contains only the runtime files declared by `scripts/build.cjs`, includi
 5. Complete Mozilla's privacy and licensing declarations using `PRIVACY.md`, `LICENSE`, `NOTICE.md`, and the packaged third-party license files as the source of truth.
 6. Explain that content scripts need HTTP, HTTPS, and local-file page access to find the focused supported editor, while all processing remains local.
 7. Use [amo-submission.md](amo-submission.md) for the listing copy, permission explanation, reviewer notes, build-tool answer, release notes, and test procedure.
-8. Complete the version details and submit version 0.2.0 for validation or review.
+8. Complete the version details and submit version 0.2.1 for validation or review.
 
-After approval, Mozilla signs version 0.2.0 and publishes it through the existing listing. Firefox installations obtained from that listing then receive the update through Mozilla's normal update channel.
+After approval, Mozilla signs version 0.2.1 and publishes it through the existing listing. Firefox installations obtained from that listing then receive the update through Mozilla's normal update channel.
 
 Do not paste Mozilla API keys or secrets into chat, source files, Git history, or shell commands.
 

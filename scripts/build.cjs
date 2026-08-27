@@ -48,14 +48,18 @@ const sourceEntries = [...new Set([
   "docs/capabilities.md",
   "docs/dictionary-decision.md",
   "docs/firefox-distribution.md",
+  "docs/future-feature-guardrails.md",
   "package.json",
   "scripts/build.cjs",
   "scripts/firefox-smoke.cjs",
+  "scripts/smoke-server.cjs",
   "scripts/validate.cjs",
   "test/manual-smoke.html",
+  "tests/background.test.js",
   "tests/checker.test.js",
   "tests/settings.test.js",
-  "tests/spelling.test.js"
+  "tests/spelling.test.js",
+  "tests/vendor-policy.test.js"
 ])];
 
 fs.mkdirSync(outputDirectory, { recursive: true });

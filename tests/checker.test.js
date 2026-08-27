@@ -22,6 +22,7 @@ test("default settings expose the complete local checker configuration", () => {
     disabledRules: [],
     disabledSites: [],
     personalDictionary: [],
+    personalReplacements: [],
   });
   assert(Object.isFrozen(defaults.DEFAULT_SETTINGS));
 });
@@ -49,6 +50,7 @@ test("normalizeSettings validates scalars and copies string lists", () => {
     disabledRules: ["RULE_A"],
     disabledSites: ["example.test"],
     personalDictionary: [],
+    personalReplacements: [],
   });
 
   assert.equal(defaults.normalizeSettings({ debounceMs: 9000 }).debounceMs, 5000);

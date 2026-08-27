@@ -315,6 +315,8 @@
       this.badgeOffsets = new WeakMap();
       this.badgeDrag = null;
       this.suppressBadgeClick = false;
+      this.canUndo = false;
+      this.returnFocus = null;
       this.host = document.createElement("div");
       this.host.id = "squiggle-sage-overlay-host";
       this.shadow = this.host.attachShadow({ mode: "closed" });
@@ -324,6 +326,7 @@
         * { box-sizing: border-box; }
         .layer { inset: 0; pointer-events: none; position: fixed; }
         .marker { --issue-wave: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8'%3E%3Cpath d='M0 4 Q2 .8 4 4 T8 4' fill='none' stroke='%23dc2626' stroke-linecap='round' stroke-width='2.2'/%3E%3C/svg%3E"); background-color: transparent; background-image: var(--issue-wave); background-position: left bottom; background-repeat: repeat-x; background-size: 8px 8px; border: 0; cursor: pointer; height: 10px; margin: 0; padding: 0; pointer-events: auto; position: fixed; }
+        .marker:focus-visible, .badge:focus-visible, .replacement:focus-visible, .secondary:focus-visible { outline: 2px solid #0f766e; outline-offset: 2px; }
         .badge { align-items: center; background: #0f766e; border: 2px solid #fff; border-radius: 999px; box-shadow: 0 3px 12px #0004; color: #fff; cursor: grab; display: flex; font: 700 12px/1 system-ui, sans-serif; height: 28px; justify-content: center; min-width: 28px; padding: 0 7px; pointer-events: auto; position: fixed; touch-action: none; user-select: none; }
         .badge[data-dragging="true"] { cursor: grabbing; }
         .card { background: Canvas; border: 1px solid color-mix(in srgb, CanvasText 18%, transparent); border-radius: 12px; box-shadow: 0 14px 38px #0004; color: CanvasText; display: grid; font: 14px/1.35 system-ui, sans-serif; gap: 10px; max-width: min(340px, calc(100vw - 16px)); padding: 14px; pointer-events: auto; position: fixed; width: 320px; }
@@ -347,7 +350,7 @@
       this.badge.title = "SquiggleSage is checking locally";
       this.badge.setAttribute(
         "aria-label",
-        "SquiggleSage suggestions. Drag or use the arrow keys to move."
+        "SquiggleSage suggestions. Press Enter to open, Alt plus Left or Right to navigate issues, or use arrow keys to move."
       );
       this.badge.hidden = true;
       this.card = makeElement("section", "card");
@@ -370,7 +373,7 @@
           this.suppressBadgeClick = false;
           return;
         }
-        this.openBadgeCard();
+        this.openBadgeCard(event.detail === 0);
       });
       this.onDocumentPointerDown = (event) => {
         if (!event.composedPath().includes(this.host)) {
@@ -378,26 +381,34 @@
         }
       };
       this.onDocumentKeyDown = (event) => {
+        if (!event.composedPath().includes(this.host)) {
+          return;
+        }
         if (event.key === "Escape" && !this.card.hidden) {
           event.preventDefault();
           this.hideCard();
-          this.badge.focus({ preventScroll: true });
+          (this.returnFocus?.isConnected ? this.returnFocus : this.badge).focus({ preventScroll: true });
+          return;
+        }
+        if (!this.card.hidden && event.altKey && ["ArrowLeft", "ArrowRight"].includes(event.key)) {
+          event.preventDefault();
+          this.navigateIssue(event.key === "ArrowRight" ? 1 : -1, true);
         }
       };
       document.addEventListener("pointerdown", this.onDocumentPointerDown, true);
       document.addEventListener("keydown", this.onDocumentKeyDown, true);
     }
 
-    openBadgeCard() {
+    openBadgeCard(focusCard = false) {
       if (!this.card.hidden) {
         this.hideCard();
         return;
       }
       const firstIssue = this.issues.values().next().value;
       if (firstIssue) {
-        this.showIssue(firstIssue, this.badge.getBoundingClientRect());
+        this.showIssue(firstIssue, this.badge.getBoundingClientRect(), focusCard, this.badge);
       } else {
-        this.showStatus(this.badge.getBoundingClientRect());
+        this.showStatus(this.badge.getBoundingClientRect(), focusCard, this.badge);
       }
     }
 
@@ -504,6 +515,12 @@
     }
 
     handleBadgeKeyDown(event) {
+      if (event.altKey && ["ArrowLeft", "ArrowRight"].includes(event.key)) {
+        event.preventDefault();
+        event.stopPropagation();
+        this.navigateIssue(event.key === "ArrowRight" ? 1 : -1, true);
+        return;
+      }
       const movement = {
         ArrowDown: [0, 8],
         ArrowLeft: [-8, 0],
@@ -546,8 +563,9 @@
       );
     }
 
-    render(element, issues) {
+    render(element, issues, state = {}) {
       this.activeElement = element;
+      this.canUndo = Boolean(state.canUndo);
       this.issues = new Map(issues.map((issue) => [issue.id, issue]));
       if (
         !this.card.hidden &&
@@ -563,9 +581,13 @@
           const marker = makeElement("button", `marker marker--${issue.category || "grammar"}`);
           marker.type = "button";
           marker.tabIndex = -1;
+          marker.dataset.issueId = issue.id;
           marker.dataset.issueCategory = issue.category || "grammar";
           marker.dataset.ruleId = issue.ruleId || "";
-          marker.setAttribute("aria-label", issue.message || "Writing suggestion");
+          marker.setAttribute(
+            "aria-label",
+            `${issue.message || "Writing suggestion"}. Press Enter to open; use arrow keys to navigate issues.`
+          );
           Object.assign(marker.style, {
             left: `${rect.left}px`,
             top: `${Math.max(rect.top, rect.bottom - 8)}px`,
@@ -574,12 +596,24 @@
           marker.addEventListener("pointerdown", (event) => {
             event.preventDefault();
             event.stopPropagation();
-            this.showIssue(issue, rect);
+            this.showIssue(issue, rect, false, marker);
           });
+          marker.addEventListener("keydown", (event) => this.handleMarkerKeyDown(event, issue, marker));
           this.layer.append(marker);
         }
       }
       const markers = this.layer.querySelectorAll(".marker");
+      const firstMarkerByIssue = new Map();
+      for (const marker of markers) {
+        if (!firstMarkerByIssue.has(marker.dataset.issueId)) {
+          firstMarkerByIssue.set(marker.dataset.issueId, marker);
+        }
+      }
+      const keyboardMarkers = [...firstMarkerByIssue.values()];
+      const selectedMarker = firstMarkerByIssue.get(this.cardIssueId) || keyboardMarkers[0];
+      if (selectedMarker) {
+        selectedMarker.tabIndex = 0;
+      }
       const firstMarker = markers[0];
       const lastMarker = markers[markers.length - 1];
       const firstSpellingMarker = this.layer.querySelector('.marker[data-issue-category="spelling"]');
@@ -590,9 +624,13 @@
         const markerRect = firstMarker.getBoundingClientRect();
         this.host.dataset.squiggleSageFirstMarkerX = String(markerRect.left + markerRect.width / 2);
         this.host.dataset.squiggleSageFirstMarkerY = String(markerRect.top + markerRect.height / 2);
+        this.host.dataset.squiggleSageFirstRuleId = firstMarker.dataset.ruleId || "";
+        this.host.dataset.squiggleSageFirstIssueCategory = firstMarker.dataset.issueCategory || "";
       } else {
         delete this.host.dataset.squiggleSageFirstMarkerX;
         delete this.host.dataset.squiggleSageFirstMarkerY;
+        delete this.host.dataset.squiggleSageFirstRuleId;
+        delete this.host.dataset.squiggleSageFirstIssueCategory;
       }
       if (lastMarker) {
         const markerRect = lastMarker.getBoundingClientRect();
@@ -605,6 +643,80 @@
       this.recordMarkerCenter("FirstSpelling", firstSpellingMarker);
       this.recordMarkerCenter("Modal", modalMarker);
       this.positionBadge(element, issues.length);
+    }
+
+    issueMarkers() {
+      const firstByIssue = new Map();
+      for (const marker of this.layer.querySelectorAll(".marker")) {
+        if (!firstByIssue.has(marker.dataset.issueId)) {
+          firstByIssue.set(marker.dataset.issueId, marker);
+        }
+      }
+      return [...firstByIssue.values()];
+    }
+
+    focusMarker(marker) {
+      if (!marker) {
+        return;
+      }
+      for (const candidate of this.issueMarkers()) {
+        candidate.tabIndex = candidate === marker ? 0 : -1;
+      }
+      marker.focus({ preventScroll: true });
+    }
+
+    navigateIssue(delta, openCard = false) {
+      const markers = this.issueMarkers();
+      if (!markers.length) {
+        if (openCard) {
+          this.showStatus(this.badge.getBoundingClientRect(), true, this.badge);
+        }
+        return;
+      }
+      const focused = this.shadow.activeElement;
+      const activeIssueId = this.cardIssueId || focused?.dataset?.issueId;
+      let index = markers.findIndex((marker) => marker.dataset.issueId === activeIssueId);
+      if (index < 0) {
+        index = delta > 0 ? -1 : 0;
+      }
+      const marker = markers[(index + delta + markers.length) % markers.length];
+      const issue = this.issues.get(marker.dataset.issueId);
+      if (!issue) {
+        return;
+      }
+      this.focusMarker(marker);
+      if (openCard) {
+        this.showIssue(issue, marker.getBoundingClientRect(), true, marker);
+      }
+    }
+
+    handleMarkerKeyDown(event, issue, marker) {
+      if (["Enter", " "].includes(event.key)) {
+        event.preventDefault();
+        this.showIssue(issue, marker.getBoundingClientRect(), true, marker);
+        return;
+      }
+      const navigationKeys = ["ArrowLeft", "ArrowUp", "ArrowRight", "ArrowDown", "Home", "End"];
+      if (navigationKeys.includes(event.key)) {
+        event.preventDefault();
+        const markers = this.issueMarkers();
+        let target;
+        if (event.key === "Home") {
+          target = markers[0];
+        } else if (event.key === "End") {
+          target = markers.at(-1);
+        } else {
+          const direction = ["ArrowRight", "ArrowDown"].includes(event.key) ? 1 : -1;
+          const index = markers.indexOf(marker);
+          target = markers[(index + direction + markers.length) % markers.length];
+        }
+        this.focusMarker(target);
+        return;
+      }
+      if (event.key === "Escape") {
+        event.preventDefault();
+        this.activeElement?.focus({ preventScroll: true });
+      }
     }
 
     recordMarkerCenter(name, marker) {
@@ -641,7 +753,7 @@
       this.badge.dataset.state = "local";
       this.host.dataset.squiggleSageBadgeText = this.badge.textContent;
       this.host.dataset.squiggleSageState = "local";
-      this.badge.title = `${count} local writing suggestion${count === 1 ? "" : "s"}. Drag to move.`;
+      this.badge.title = `${count} local writing suggestion${count === 1 ? "" : "s"}. Press Enter to open; Alt+Left/Right navigates issues.`;
       const badgeRect = this.badge.getBoundingClientRect();
       const base = this.defaultBadgePosition(rect, badgeRect.width, badgeRect.height);
       const offset = this.badgeOffsets.get(element);
@@ -653,18 +765,23 @@
       );
     }
 
-    showStatus(anchor) {
+    showStatus(anchor, focusCard = false, trigger = null) {
       this.cardIssueId = null;
-      this.card.replaceChildren(
+      const children = [
         this.makeCloseButton(),
         makeElement("div", "category", "SquiggleSage"),
-        makeElement("div", "message", "No local writing suggestions in this field."),
-        makeElement("div", "privacy", "SquiggleSage and Firefox spelling both run locally.")
-      );
-      this.positionCard(anchor);
+        makeElement("div", "message", "No local writing suggestions in this field.")
+      ];
+      if (this.canUndo) {
+        children.push(this.makeUndoButton());
+      }
+      children.push(makeElement("div", "privacy", "SquiggleSage and Firefox spelling both run locally."));
+      this.card.replaceChildren(...children);
+      this.returnFocus = trigger;
+      this.positionCard(anchor, focusCard);
     }
 
-    showIssue(issue, anchor) {
+    showIssue(issue, anchor, focusCard = false, trigger = null) {
       this.cardIssueId = issue.id;
       const category = makeElement("div", "category", issue.category || "Writing");
       const message = makeElement("div", "message", issue.message || "Writing suggestion");
@@ -687,14 +804,21 @@
         this.hideCard();
         this.onAction({ type: "ignore", issue });
       });
+      const ignoreForSession = makeElement("button", "secondary ignore-for-session", "Ignore for session");
+      ignoreForSession.type = "button";
+      ignoreForSession.title = "Ignore matching occurrences until this tab is closed or reloaded";
+      ignoreForSession.addEventListener("click", () => {
+        this.hideCard();
+        this.onAction({ type: "ignore-for-session", issue });
+      });
       const disable = makeElement("button", "secondary", "Turn off rule");
       disable.type = "button";
       disable.addEventListener("click", () => {
         this.hideCard();
         this.onAction({ type: "disable-rule", issue });
       });
-      actions.append(ignore);
-      if (issue.category === "spelling") {
+      actions.append(ignore, ignoreForSession);
+      if (issue.category === "spelling" && issue.ruleId !== "PERSONAL_REPLACEMENT") {
         const addToDictionary = makeElement("button", "secondary add-to-dictionary", "Add to dictionary");
         addToDictionary.type = "button";
         addToDictionary.addEventListener("click", () => {
@@ -702,16 +826,30 @@
           this.onAction({ type: "add-to-dictionary", issue });
         });
         actions.append(addToDictionary);
-      } else {
+      } else if (issue.ruleId !== "PERSONAL_REPLACEMENT") {
         actions.append(disable);
       }
       const children = [this.makeCloseButton(), category, message];
       if (replacements.childElementCount) {
         children.push(replacements);
       }
+      if (this.canUndo) {
+        children.push(this.makeUndoButton());
+      }
       children.push(actions, makeElement("div", "privacy", "Checked locally - editor text is not stored."));
       this.card.replaceChildren(...children);
-      this.positionCard(anchor);
+      this.returnFocus = trigger;
+      this.positionCard(anchor, focusCard);
+    }
+
+    makeUndoButton() {
+      const undo = makeElement("button", "secondary undo", "Undo last correction");
+      undo.type = "button";
+      undo.addEventListener("click", () => {
+        this.hideCard();
+        this.onAction({ type: "undo" });
+      });
+      return undo;
     }
 
     makeCloseButton() {
@@ -721,12 +859,12 @@
       close.title = "Close";
       close.addEventListener("click", () => {
         this.hideCard();
-        this.badge.focus({ preventScroll: true });
+        (this.returnFocus?.isConnected ? this.returnFocus : this.badge).focus({ preventScroll: true });
       });
       return close;
     }
 
-    positionCard(anchor) {
+    positionCard(anchor, focusCard = false) {
       this.card.hidden = false;
       const width = Math.min(320, innerWidth - 16);
       this.card.style.width = `${width}px`;
@@ -740,6 +878,8 @@
       Object.assign(this.card.style, { left: `${left}px`, top: `${top}px` });
       const firstReplacement = this.card.querySelector(".replacement");
       const addToDictionary = this.card.querySelector(".add-to-dictionary");
+      const undo = this.card.querySelector(".undo");
+      const ignoreForSession = this.card.querySelector(".ignore-for-session");
       this.host.dataset.squiggleSageCardVisible = "true";
       this.host.dataset.squiggleSageReplacementCount = String(
         this.card.querySelectorAll(".replacement").length
@@ -764,6 +904,28 @@
         delete this.host.dataset.squiggleSageAddToDictionaryX;
         delete this.host.dataset.squiggleSageAddToDictionaryY;
       }
+      this.recordActionCenter("Undo", undo);
+      this.recordActionCenter("IgnoreForSession", ignoreForSession);
+      this.host.dataset.squiggleSageUndoAvailable = String(Boolean(this.card.querySelector(".undo")));
+      this.host.dataset.squiggleSageIgnoreForSessionAvailable = String(
+        Boolean(this.card.querySelector(".ignore-for-session"))
+      );
+      if (focusCard) {
+        this.card.querySelector(".replacement, .secondary, .close")?.focus({ preventScroll: true });
+      }
+    }
+
+    recordActionCenter(name, action) {
+      const xKey = `squiggleSage${name}X`;
+      const yKey = `squiggleSage${name}Y`;
+      if (action) {
+        const rect = action.getBoundingClientRect();
+        this.host.dataset[xKey] = String(rect.left + rect.width / 2);
+        this.host.dataset[yKey] = String(rect.top + rect.height / 2);
+      } else {
+        delete this.host.dataset[xKey];
+        delete this.host.dataset[yKey];
+      }
     }
 
     hideCard() {
@@ -771,10 +933,16 @@
       this.cardIssueId = undefined;
       this.host.dataset.squiggleSageCardVisible = "false";
       this.host.dataset.squiggleSageReplacementCount = "0";
+      this.host.dataset.squiggleSageUndoAvailable = "false";
+      this.host.dataset.squiggleSageIgnoreForSessionAvailable = "false";
       delete this.host.dataset.squiggleSageFirstReplacementX;
       delete this.host.dataset.squiggleSageFirstReplacementY;
       delete this.host.dataset.squiggleSageAddToDictionaryX;
       delete this.host.dataset.squiggleSageAddToDictionaryY;
+      delete this.host.dataset.squiggleSageUndoX;
+      delete this.host.dataset.squiggleSageUndoY;
+      delete this.host.dataset.squiggleSageIgnoreForSessionX;
+      delete this.host.dataset.squiggleSageIgnoreForSessionY;
     }
 
     resetDiagnostics() {
@@ -789,6 +957,8 @@
       delete this.host.dataset.squiggleSageBadgeY;
       delete this.host.dataset.squiggleSageFirstMarkerX;
       delete this.host.dataset.squiggleSageFirstMarkerY;
+      delete this.host.dataset.squiggleSageFirstRuleId;
+      delete this.host.dataset.squiggleSageFirstIssueCategory;
       delete this.host.dataset.squiggleSageLastMarkerX;
       delete this.host.dataset.squiggleSageLastMarkerY;
       delete this.host.dataset.squiggleSageFirstSpellingMarkerX;

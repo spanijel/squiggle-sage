@@ -62,6 +62,55 @@ test("personal dictionary is normalized and suppresses matching issues", () => {
   assert.equal(checker.checkText("squigglesage", ["SquiggleSage"]).length, 0);
 });
 
+test("personal replacements are normalized as bounded inert literal pairs", () => {
+  const normalized = spelling.normalizePersonalReplacements([
+    { find: "  teh  ", replace: " the " },
+    { find: "TEH", replace: "duplicate" },
+    { find: "two   spaces", replace: "one space" },
+    { find: "unsafe\ntext", replace: "blocked" },
+    { find: "hidden\u202econtrol", replace: "blocked" },
+    { find: "same", replace: "same" },
+    null
+  ]);
+
+  assert.deepEqual(normalized, [
+    { find: "teh", replace: "the" },
+    { find: "two spaces", replace: "one space" }
+  ]);
+});
+
+test("personal replacements use whole literal ranges and preserve explicit casing", () => {
+  const text = "teh cathedral iphone iPhone two spaces";
+  const issues = spelling.checkPersonalReplacements(text, [
+    { find: "teh", replace: "the" },
+    { find: "iphone", replace: "iPhone" },
+    { find: "two spaces", replace: "one space" }
+  ]);
+
+  assert.deepEqual(
+    issues.map((issue) => [issue.original, issue.replacements[0], issue.offset]),
+    [
+      ["teh", "the", 0],
+      ["iphone", "iPhone", 14],
+      ["two spaces", "one space", 28]
+    ]
+  );
+  assert(issues.every((issue) => issue.ruleId === "PERSONAL_REPLACEMENT"));
+});
+
+test("overlapping personal replacements resolve deterministically and stay bounded", () => {
+  const issues = spelling.checkPersonalReplacements(
+    "new york new york new york",
+    [
+      { find: "new", replace: "old" },
+      { find: "new york", replace: "NYC" }
+    ],
+    { maxIssues: 2 }
+  );
+
+  assert.deepEqual(issues.map((issue) => issue.original), ["new york", "new york"]);
+});
+
 test("common correct prose does not produce spelling issues", () => {
   const text = "The local writing assistant checks ordinary English words while you type and keeps your private text inside Firefox.";
   assert.deepEqual(checker.checkText(text), []);

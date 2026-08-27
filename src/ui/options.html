@@ -157,10 +157,51 @@
           </div>
         </section>
 
-        <section class="settings-card" aria-labelledby="sites-heading">
+        <section class="settings-card" aria-labelledby="replacements-heading">
           <div class="section-heading">
             <div>
               <span class="section-number" aria-hidden="true">04</span>
+              <h2 id="replacements-heading">Personal replacements</h2>
+            </div>
+            <p>Save exact text corrections that SquiggleSage can offer while you write.</p>
+          </div>
+
+          <div class="replacement-controls">
+            <div class="replacement-add" role="group" aria-labelledby="replacement-add-heading">
+              <h3 id="replacement-add-heading" class="field-label">Add a replacement</h3>
+              <div class="replacement-fields">
+                <label class="field" for="replacement-find">
+                  <span>Find</span>
+                  <input id="replacement-find" type="text" maxlength="80" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="For example, teh">
+                </label>
+                <label class="field" for="replacement-value">
+                  <span>Replace with</span>
+                  <input id="replacement-value" type="text" maxlength="80" autocomplete="off" spellcheck="false" placeholder="For example, the">
+                </label>
+                <button id="replacement-add-button" class="button secondary-button" type="button">Add</button>
+              </div>
+              <small>Visible text only, without line breaks or control characters. Up to 100 pairs. Suggestions appear while SquiggleSage spelling is enabled.</small>
+            </div>
+
+            <label class="field replacement-search" for="replacement-search">
+              <span>Search saved replacements</span>
+              <input id="replacement-search" type="search" autocomplete="off" spellcheck="false" placeholder="Filter find or replacement text">
+            </label>
+
+            <div class="replacement-summary">
+              <p id="replacement-count">0 personal replacements</p>
+              <p id="replacement-status" role="status" aria-live="polite"></p>
+            </div>
+            <ul id="replacement-list" class="replacement-list" aria-label="Personal replacement pairs"></ul>
+            <p id="replacement-empty" class="replacement-empty">No personal replacements yet.</p>
+            <p class="local-storage-note">Stored only in this Firefox profile. SquiggleSage does not upload these entries.</p>
+          </div>
+        </section>
+
+        <section class="settings-card" aria-labelledby="sites-heading">
+          <div class="section-heading">
+            <div>
+              <span class="section-number" aria-hidden="true">05</span>
               <h2 id="sites-heading">Disabled websites</h2>
             </div>
             <p>SquiggleSage will stay inactive on these exact domains.</p>
@@ -176,7 +217,7 @@
         <section class="settings-card" aria-labelledby="rules-heading">
           <div class="section-heading">
             <div>
-              <span class="section-number" aria-hidden="true">05</span>
+              <span class="section-number" aria-hidden="true">06</span>
               <h2 id="rules-heading">Individual rules</h2>
             </div>
             <p>Fine-tune rules without turning off an entire feedback category.</p>

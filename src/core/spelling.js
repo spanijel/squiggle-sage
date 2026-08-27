@@ -13,6 +13,9 @@
 
   var TOKEN_PATTERN = /[A-Za-z]+(?:['’][A-Za-z]+)*/g;
   var PERSONAL_WORD_PATTERN = /^[a-z]+(?:['-][a-z]+)*$/;
+  var MAX_PERSONAL_REPLACEMENTS = 100;
+  var MAX_PERSONAL_REPLACEMENT_LENGTH = 80;
+  var UNSAFE_REPLACEMENT_TEXT = /[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u202a-\u202e\u2060-\u206f\ufeff]/;
   var EXCLUDED_PATTERNS = [
     /\b(?:https?:\/\/|www\.)[^\s<>()]+/gi,
     /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi,
@@ -49,6 +52,123 @@
       }
     });
     return result.sort();
+  }
+
+  function normalizeReplacementText(value) {
+    if (typeof value !== "string") {
+      return "";
+    }
+    var normalized = value
+      .normalize("NFC")
+      .replace(/\u2019/g, "'");
+    if (
+      UNSAFE_REPLACEMENT_TEXT.test(normalized) ||
+      /[^\S ]/.test(normalized)
+    ) {
+      return "";
+    }
+    normalized = normalized.trim().replace(/ +/g, " ");
+    if (
+      !normalized ||
+      normalized.length > MAX_PERSONAL_REPLACEMENT_LENGTH
+    ) {
+      return "";
+    }
+    return normalized;
+  }
+
+  function normalizePersonalReplacements(value) {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+    var seen = new Set();
+    var result = [];
+    value.some(function (entry) {
+      if (!entry || typeof entry !== "object") {
+        return false;
+      }
+      var find = normalizeReplacementText(entry.find);
+      var replace = normalizeReplacementText(entry.replace);
+      var key = find.toLowerCase();
+      if (!find || !replace || find === replace || seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      result.push({ find: find, replace: replace });
+      return result.length >= MAX_PERSONAL_REPLACEMENTS;
+    });
+    return result
+      .sort(function (left, right) {
+        var leftKey = left.find.toLowerCase();
+        var rightKey = right.find.toLowerCase();
+        return leftKey < rightKey ? -1 : leftKey > rightKey ? 1 : 0;
+      });
+  }
+
+  function isWordCharacter(value) {
+    return /[\p{L}\p{N}]/u.test(value || "");
+  }
+
+  function checkPersonalReplacements(value, replacementPairs, options) {
+    var text = String(value || "");
+    var pairs = normalizePersonalReplacements(replacementPairs);
+    var settings = options && typeof options === "object" ? options : {};
+    var maxIssues = Number.isInteger(settings.maxIssues)
+      ? Math.max(1, Math.min(100, settings.maxIssues))
+      : 30;
+    var lowerText = text.toLowerCase();
+    var candidates = [];
+
+    for (var pairIndex = 0; pairIndex < pairs.length; pairIndex += 1) {
+      var pair = pairs[pairIndex];
+      var needle = pair.find.toLowerCase();
+      var offset = 0;
+      while (offset <= lowerText.length - needle.length && candidates.length < maxIssues * 4) {
+        var matchOffset = lowerText.indexOf(needle, offset);
+        if (matchOffset === -1) {
+          break;
+        }
+        var matchEnd = matchOffset + pair.find.length;
+        var startsWithWord = isWordCharacter(pair.find[0]);
+        var endsWithWord = isWordCharacter(pair.find[pair.find.length - 1]);
+        var hasStartBoundary = !startsWithWord || !isWordCharacter(text[matchOffset - 1]);
+        var hasEndBoundary = !endsWithWord || !isWordCharacter(text[matchEnd]);
+        var original = text.slice(matchOffset, matchEnd);
+        if (hasStartBoundary && hasEndBoundary && original !== pair.replace) {
+          candidates.push({
+            id: "PERSONAL_REPLACEMENT:" + matchOffset + ":" + pair.find.length,
+            ruleId: "PERSONAL_REPLACEMENT",
+            category: "spelling",
+            message: "Personal replacement: \u201c" + pair.find + "\u201d to \u201c" + pair.replace + "\u201d.",
+            offset: matchOffset,
+            length: pair.find.length,
+            replacements: [pair.replace],
+            original: original
+          });
+        }
+        offset = matchOffset + Math.max(1, pair.find.length);
+      }
+      if (candidates.length >= maxIssues * 4) {
+        break;
+      }
+    }
+
+    candidates.sort(function (left, right) {
+      return left.offset - right.offset || right.length - left.length || left.message.localeCompare(right.message);
+    });
+    var issues = [];
+    var previousEnd = -1;
+    for (var candidate of candidates) {
+      if (issues.length >= maxIssues) {
+        break;
+      }
+      if (candidate.offset < previousEnd) {
+        continue;
+      }
+      issues.push(candidate);
+      previousEnd = candidate.offset + candidate.length;
+    }
+    return issues;
   }
 
   function excludedRanges(text) {
@@ -221,8 +341,10 @@
 
   return Object.freeze({
     createSpellingChecker: createSpellingChecker,
+    checkPersonalReplacements: checkPersonalReplacements,
     normalizePersonalWord: normalizePersonalWord,
     normalizePersonalWords: normalizePersonalWords,
+    normalizePersonalReplacements: normalizePersonalReplacements,
     tokenize: tokenize
   });
 });

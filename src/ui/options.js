@@ -15,7 +15,8 @@
     debounceMs: 350,
     disabledRules: [],
     disabledSites: [],
-    personalDictionary: []
+    personalDictionary: [],
+    personalReplacements: []
   };
   const categoryLabels = {
     grammar: "Grammar",
@@ -41,11 +42,20 @@
   const dictionaryStatus = document.querySelector("#dictionary-status");
   const dictionaryList = document.querySelector("#dictionary-list");
   const dictionaryEmpty = document.querySelector("#dictionary-empty");
+  const replacementFindInput = document.querySelector("#replacement-find");
+  const replacementValueInput = document.querySelector("#replacement-value");
+  const replacementAddButton = document.querySelector("#replacement-add-button");
+  const replacementSearchInput = document.querySelector("#replacement-search");
+  const replacementCount = document.querySelector("#replacement-count");
+  const replacementStatus = document.querySelector("#replacement-status");
+  const replacementList = document.querySelector("#replacement-list");
+  const replacementEmpty = document.querySelector("#replacement-empty");
   const rulesContainer = document.querySelector("#rules-container");
   const saveStatus = document.querySelector("#save-status");
   const saveButton = document.querySelector("#save-button");
   const resetButton = document.querySelector("#reset-button");
   let personalDictionary = [];
+  let personalReplacements = [];
 
   function normalizeSettings(input) {
     if (typeof defaultsApi.normalizeSettings === "function") {
@@ -104,7 +114,11 @@
     saveButton.disabled = busy;
     resetButton.disabled = busy;
     dictionaryAddButton.disabled = busy;
+    replacementAddButton.disabled = busy;
     for (const button of dictionaryList.querySelectorAll("button")) {
+      button.disabled = busy;
+    }
+    for (const button of replacementList.querySelectorAll("button")) {
       button.disabled = busy;
     }
   }
@@ -180,6 +194,100 @@
     setDictionaryStatus(`Added “${word}”. Save settings to apply.`, "success");
     setStatus("Unsaved changes");
     dictionaryWordInput.focus();
+  }
+
+  function setReplacementStatus(message, kind = "") {
+    replacementStatus.textContent = message;
+    replacementStatus.className = kind;
+  }
+
+  function replacementKey(entry) {
+    return entry.find.toLowerCase();
+  }
+
+  function renderPersonalReplacements() {
+    const query = replacementSearchInput.value.trim().toLowerCase();
+    const visibleEntries = personalReplacements.filter((entry) =>
+      entry.find.toLowerCase().includes(query) || entry.replace.toLowerCase().includes(query)
+    );
+    replacementList.replaceChildren();
+
+    for (const entry of visibleEntries) {
+      const item = document.createElement("li");
+      const pair = document.createElement("span");
+      pair.className = "replacement-pair";
+
+      const findText = document.createElement("span");
+      findText.textContent = entry.find;
+      const arrow = document.createElement("span");
+      arrow.className = "replacement-arrow";
+      arrow.setAttribute("aria-hidden", "true");
+      arrow.textContent = "→";
+      const arrowLabel = document.createElement("span");
+      arrowLabel.className = "visually-hidden";
+      arrowLabel.textContent = "is replaced with";
+      const replaceText = document.createElement("span");
+      replaceText.textContent = entry.replace;
+      pair.append(findText, arrow, arrowLabel, replaceText);
+
+      const removeButton = document.createElement("button");
+      removeButton.className = "dictionary-remove";
+      removeButton.type = "button";
+      removeButton.textContent = "Remove";
+      removeButton.setAttribute("aria-label", `Remove the replacement ${entry.find} with ${entry.replace}`);
+      removeButton.addEventListener("click", () => {
+        const key = replacementKey(entry);
+        personalReplacements = personalReplacements.filter((candidate) => replacementKey(candidate) !== key);
+        renderPersonalReplacements();
+        setReplacementStatus(`Removed “${entry.find}” → “${entry.replace}”. Save settings to apply.`, "success");
+        setStatus("Unsaved changes");
+      });
+
+      item.append(pair, removeButton);
+      replacementList.append(item);
+    }
+
+    const total = personalReplacements.length;
+    replacementCount.textContent = `${total} personal replacement${total === 1 ? "" : "s"}`;
+    replacementEmpty.hidden = visibleEntries.length > 0;
+    replacementEmpty.textContent = total === 0
+      ? "No personal replacements yet."
+      : "No personal replacements match your search.";
+  }
+
+  function addPersonalReplacement() {
+    const candidate = normalizeSettings({
+      personalReplacements: [{
+        find: replacementFindInput.value,
+        replace: replacementValueInput.value
+      }]
+    }).personalReplacements[0];
+
+    if (!candidate) {
+      setReplacementStatus("Enter two different visible values without line breaks or control characters.", "error");
+      replacementFindInput.focus();
+      return;
+    }
+    if (personalReplacements.length >= (defaultsApi.MAX_PERSONAL_REPLACEMENTS || 100)) {
+      setReplacementStatus("You can save up to 100 personal replacements.", "error");
+      return;
+    }
+    if (personalReplacements.some((entry) => replacementKey(entry) === replacementKey(candidate))) {
+      setReplacementStatus(`A replacement for “${candidate.find}” already exists.`, "error");
+      replacementFindInput.select();
+      return;
+    }
+
+    personalReplacements = normalizeSettings({
+      personalReplacements: [...personalReplacements, candidate]
+    }).personalReplacements;
+    replacementFindInput.value = "";
+    replacementValueInput.value = "";
+    replacementSearchInput.value = "";
+    renderPersonalReplacements();
+    setReplacementStatus(`Added “${candidate.find}” → “${candidate.replace}”. Save settings to apply.`, "success");
+    setStatus("Unsaved changes");
+    replacementFindInput.focus();
   }
 
   function formatCategory(category) {
@@ -278,10 +386,16 @@
     debounceInput.value = normalized.debounceMs;
     disabledSitesInput.value = normalized.disabledSites.join("\n");
     personalDictionary = [...normalized.personalDictionary];
+    personalReplacements = normalized.personalReplacements.map((entry) => ({ ...entry }));
     dictionaryWordInput.value = "";
     dictionarySearchInput.value = "";
     setDictionaryStatus("");
     renderPersonalDictionary();
+    replacementFindInput.value = "";
+    replacementValueInput.value = "";
+    replacementSearchInput.value = "";
+    setReplacementStatus("");
+    renderPersonalReplacements();
 
     const disabledRules = new Set(normalized.disabledRules);
     for (const input of rulesContainer.querySelectorAll("input[data-rule-id]")) {
@@ -342,7 +456,8 @@
       debounceMs,
       disabledSites: parseDisabledSites(disabledSitesInput.value),
       disabledRules,
-      personalDictionary
+      personalDictionary,
+      personalReplacements
     });
   }
 
@@ -370,9 +485,25 @@
     }
   });
   dictionarySearchInput.addEventListener("input", renderPersonalDictionary);
+  replacementAddButton.addEventListener("click", addPersonalReplacement);
+  for (const input of [replacementFindInput, replacementValueInput]) {
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        addPersonalReplacement();
+      }
+    });
+  }
+  replacementSearchInput.addEventListener("input", renderPersonalReplacements);
 
   form.addEventListener("input", (event) => {
-    if (event.target === dictionaryWordInput || event.target === dictionarySearchInput) {
+    if (
+      event.target === dictionaryWordInput ||
+      event.target === dictionarySearchInput ||
+      event.target === replacementFindInput ||
+      event.target === replacementValueInput ||
+      event.target === replacementSearchInput
+    ) {
       return;
     }
     if (!saveButton.disabled) {
@@ -405,7 +536,7 @@
   });
 
   resetButton.addEventListener("click", async () => {
-    if (!window.confirm("Reset all SquiggleSage settings, disabled websites, and personal words to their defaults?")) {
+    if (!window.confirm("Reset all SquiggleSage settings, disabled websites, personal words, and personal replacements to their defaults?")) {
       return;
     }
 

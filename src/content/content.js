@@ -18,6 +18,7 @@
     "[role='textbox'][aria-roledescription*='code' i]"
   ].join(",");
   const modifiedSpellcheck = new Map();
+  const sessionIgnored = new Set();
   let settings = defaultsApi.normalizeSettings({});
   let activeController = null;
   let overlay = null;
@@ -173,6 +174,11 @@
     return settings.grammar;
   }
 
+  function sessionIssueKey(issue) {
+    const original = String(issue.original || "").trim().toLocaleLowerCase("en-US");
+    return `${issue.ruleId || issue.category || "rule"}:${original}`;
+  }
+
   function sendRuntimeMessage(message) {
     if (global.browser) {
       return extensionApi.runtime.sendMessage(message);
@@ -191,16 +197,18 @@
 
   async function checkSpelling(text) {
     if (!settings.spelling) {
-      return { issues: [], personalDictionaryCount: 0 };
+      return { issues: [], personalDictionaryCount: 0, personalReplacementCount: 0 };
     }
     const response = await sendRuntimeMessage({
       type: "squiggle-sage:check-spelling",
       text,
-      personalDictionary: settings.personalDictionary
+      personalDictionary: settings.personalDictionary,
+      personalReplacements: settings.personalReplacements
     });
     return {
       issues: Array.isArray(response?.issues) ? response.issues : [],
-      personalDictionaryCount: Number(response?.personalDictionaryCount) || 0
+      personalDictionaryCount: Number(response?.personalDictionaryCount) || 0,
+      personalReplacementCount: Number(response?.personalReplacementCount) || 0
     };
   }
 
@@ -209,6 +217,7 @@
       this.element = element;
       this.composing = false;
       this.ignored = new Set();
+      this.lastCorrection = null;
       this.issues = [];
       this.revision = 0;
       this.timer = null;
@@ -257,11 +266,13 @@
       const localIssues = checkerApi.checkText(text, settings);
       let spellingIssues = [];
       let spellingPersonalDictionaryCount = 0;
+      let spellingPersonalReplacementCount = 0;
       if (settings.spelling) {
         try {
           const spellingResult = await checkSpelling(text);
           spellingIssues = spellingResult.issues;
           spellingPersonalDictionaryCount = spellingResult.personalDictionaryCount;
+          spellingPersonalReplacementCount = spellingResult.personalReplacementCount;
         } catch (_error) {
           spellingIssues = [];
         }
@@ -277,9 +288,11 @@
       }
       this.issues = normalizeIssues([...localIssues, ...spellingIssues], text)
         .filter(categoryEnabled)
-        .filter((issue) => !this.ignored.has(issueKey(issue, text)));
+        .filter((issue) => !this.ignored.has(issueKey(issue, text)))
+        .filter((issue) => !sessionIgnored.has(sessionIssueKey(issue)));
       this.lastSpellingIssueCount = spellingIssues.length;
       this.lastSpellingPersonalDictionaryCount = spellingPersonalDictionaryCount;
+      this.lastSpellingPersonalReplacementCount = spellingPersonalReplacementCount;
       this.render();
     }
 
@@ -295,7 +308,10 @@
       view.host.dataset.squiggleSageSpellingPersonalDictionaryCount = String(
         this.lastSpellingPersonalDictionaryCount || 0
       );
-      view.render(this.element, this.issues);
+      view.host.dataset.squiggleSagePersonalReplacementCount = String(
+        this.lastSpellingPersonalReplacementCount || 0
+      );
+      view.render(this.element, this.issues, { canUndo: this.canUndo() });
     }
 
     clear() {
@@ -312,7 +328,26 @@
       this.render();
     }
 
-    replace(issue, replacement) {
+    ignoreForSession(issue) {
+      sessionIgnored.add(sessionIssueKey(issue));
+      this.issues = this.issues.filter(
+        (candidate) => sessionIssueKey(candidate) !== sessionIssueKey(issue)
+      );
+      this.render();
+    }
+
+    canUndo() {
+      if (!this.lastCorrection) {
+        return false;
+      }
+      const text = highlighterApi.getEditableText(this.element);
+      return text.slice(
+        this.lastCorrection.offset,
+        this.lastCorrection.offset + this.lastCorrection.replacement.length
+      ) === this.lastCorrection.replacement;
+    }
+
+    applyTextReplacement(offset, expected, replacement, recordUndo = false) {
       this.element.focus({ preventScroll: true });
       const textModel = highlighterApi.isTextControl(this.element)
         ? null
@@ -320,39 +355,38 @@
       const currentText = textModel
         ? textModel.text
         : highlighterApi.getEditableText(this.element);
-      if (currentText.slice(issue.offset, issue.offset + issue.length) !== issue.original) {
+      if (currentText.slice(offset, offset + expected.length) !== expected) {
+        this.lastCorrection = null;
         this.schedule(0);
-        return;
+        return false;
       }
-      if (textModel && issue.original.includes("\n")) {
+      if (textModel && expected.includes("\n")) {
         this.schedule(0);
-        return;
+        return false;
+      }
+      if (recordUndo) {
+        this.lastCorrection = { offset, original: expected, replacement };
       }
       if (highlighterApi.isTextControl(this.element)) {
-        this.element.setRangeText(replacement, issue.offset, issue.offset + issue.length, "end");
+        this.element.setRangeText(replacement, offset, offset + expected.length, "end");
         this.element.dispatchEvent(new InputEvent("input", {
           bubbles: true,
           composed: true,
           data: replacement,
           inputType: "insertReplacementText"
         }));
-        return;
+        return true;
       }
-      const start = highlighterApi.resolveTextPosition(
-        this.element,
-        issue.offset,
-        "forward",
-        textModel
-      );
+      const start = highlighterApi.resolveTextPosition(this.element, offset, "forward", textModel);
       const end = highlighterApi.resolveTextPosition(
         this.element,
-        issue.offset + issue.length,
+        offset + expected.length,
         "backward",
         textModel
       );
       if (!start || !end) {
         this.schedule(0);
-        return;
+        return false;
       }
       const range = document.createRange();
       try {
@@ -360,7 +394,7 @@
         range.setEnd(end.node, end.offset);
       } catch (_error) {
         this.schedule(0);
-        return;
+        return false;
       }
       const selection = getSelection();
       selection.removeAllRanges();
@@ -382,6 +416,26 @@
         }));
       }
       this.schedule(0);
+      return true;
+    }
+
+    undoLastCorrection() {
+      const correction = this.lastCorrection;
+      if (!correction) {
+        return;
+      }
+      if (this.applyTextReplacement(
+        correction.offset,
+        correction.replacement,
+        correction.original,
+        false
+      )) {
+        this.lastCorrection = null;
+      }
+    }
+
+    replace(issue, replacement) {
+      this.applyTextReplacement(issue.offset, issue.original, replacement, true);
     }
 
     destroy() {
@@ -404,6 +458,14 @@
     }
     if (action.type === "ignore") {
       activeController.ignore(action.issue);
+      return;
+    }
+    if (action.type === "ignore-for-session") {
+      activeController.ignoreForSession(action.issue);
+      return;
+    }
+    if (action.type === "undo") {
+      activeController.undoLastCorrection();
       return;
     }
     if (action.type === "add-to-dictionary") {

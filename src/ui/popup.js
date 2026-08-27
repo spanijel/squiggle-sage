@@ -14,7 +14,8 @@
     debounceMs: 350,
     disabledRules: [],
     disabledSites: [],
-    personalDictionary: []
+    personalDictionary: [],
+    personalReplacements: []
   };
 
   const enabledToggle = document.querySelector("#enabled-toggle");

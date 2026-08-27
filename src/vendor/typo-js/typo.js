@@ -1,8 +1,3 @@
-/*
- * SquiggleSage vendored copy: automatic file loading was removed so this
- * component cannot initiate requests. The extension always supplies the
- * packaged affix and dictionary text explicitly.
- */
 /* globals chrome: false */
 /* globals __dirname: false */
 /* globals require: false */
@@ -186,8 +181,52 @@ var Typo;
          * @returns {string} The file data if async is false, otherwise a promise object. If running node.js, the data is
          *          always returned.
          */
-        _readFile: function () {
-            throw new Error("SquiggleSage requires preloaded packaged dictionary data.");
+        _readFile: function (path, charset, async) {
+            var _a;
+            charset = charset || "utf8";
+            if (typeof XMLHttpRequest !== 'undefined') {
+                var req_1 = new XMLHttpRequest();
+                req_1.open("GET", path, !!async);
+                (_a = req_1.overrideMimeType) === null || _a === void 0 ? void 0 : _a.call(req_1, "text/plain; charset=" + charset);
+                if (!!async) {
+                    var promise = new Promise(function (resolve, reject) {
+                        req_1.onload = function () {
+                            if (req_1.status === 200) {
+                                resolve(req_1.responseText);
+                            }
+                            else {
+                                reject(req_1.statusText);
+                            }
+                        };
+                        req_1.onerror = function () {
+                            reject(req_1.statusText);
+                        };
+                    });
+                    req_1.send(null);
+                    return promise;
+                }
+                else {
+                    req_1.send(null);
+                    return req_1.responseText;
+                }
+            }
+            else if (typeof require !== 'undefined') {
+                // Node.js
+                var fs = require("fs");
+                try {
+                    if (fs.existsSync(path)) {
+                        return fs.readFileSync(path, charset);
+                    }
+                    else {
+                        console.log("Path " + path + " does not exist.");
+                    }
+                }
+                catch (e) {
+                    console.log(e);
+                }
+                return '';
+            }
+            return '';
         },
         /**
          * Parse the rules out from a .aff file.

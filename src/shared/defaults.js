@@ -11,6 +11,10 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
   "use strict";
 
+  var MAX_PERSONAL_REPLACEMENTS = 100;
+  var MAX_REPLACEMENT_FIND_LENGTH = 80;
+  var MAX_REPLACEMENT_VALUE_LENGTH = 80;
+
   var DEFAULT_SETTINGS = Object.freeze({
     enabled: true,
     nativeSpellcheck: true,
@@ -23,6 +27,7 @@
     disabledRules: Object.freeze([]),
     disabledSites: Object.freeze([]),
     personalDictionary: Object.freeze([]),
+    personalReplacements: Object.freeze([]),
   });
 
   function normalizedStringArray(value) {
@@ -90,6 +95,62 @@
     return normalized.sort();
   }
 
+  function normalizedReplacementText(value, maxLength) {
+    if (typeof value !== "string") {
+      return "";
+    }
+
+    var candidate = value
+      .normalize("NFC")
+      .replace(/\u2019/g, "'")
+      .trim()
+      .replace(/ +/g, " ");
+
+    if (
+      !candidate ||
+      candidate.length > maxLength ||
+      /[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u202a-\u202e\u2060-\u206f\ufeff]/.test(candidate) ||
+      /[^\S ]/.test(candidate)
+    ) {
+      return "";
+    }
+
+    return candidate;
+  }
+
+  function normalizedPersonalReplacements(value) {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+
+    var seen = Object.create(null);
+    var normalized = [];
+
+    value.some(function (item) {
+      if (!item || typeof item !== "object" || Array.isArray(item)) {
+        return false;
+      }
+
+      var find = normalizedReplacementText(item.find, MAX_REPLACEMENT_FIND_LENGTH);
+      var replace = normalizedReplacementText(item.replace, MAX_REPLACEMENT_VALUE_LENGTH);
+      var key = find.toLowerCase();
+
+      if (!find || !replace || find === replace || seen[key]) {
+        return false;
+      }
+
+      seen[key] = true;
+      normalized.push(Object.freeze({ find: find, replace: replace }));
+      return normalized.length >= MAX_PERSONAL_REPLACEMENTS;
+    });
+
+    return normalized.sort(function (left, right) {
+      var leftKey = left.find.toLowerCase();
+      var rightKey = right.find.toLowerCase();
+      return leftKey < rightKey ? -1 : leftKey > rightKey ? 1 : 0;
+    });
+  }
+
   function normalizeSettings(value) {
     var input = value && typeof value === "object" ? value : {};
     var rawDebounce = Number(input.debounceMs);
@@ -108,11 +169,16 @@
       disabledRules: normalizedStringArray(input.disabledRules),
       disabledSites: normalizedStringArray(input.disabledSites),
       personalDictionary: normalizedPersonalDictionary(input.personalDictionary),
+      personalReplacements: normalizedPersonalReplacements(input.personalReplacements),
     };
   }
 
   return Object.freeze({
     DEFAULT_SETTINGS: DEFAULT_SETTINGS,
+    MAX_PERSONAL_REPLACEMENTS: MAX_PERSONAL_REPLACEMENTS,
+    MAX_REPLACEMENT_FIND_LENGTH: MAX_REPLACEMENT_FIND_LENGTH,
+    MAX_REPLACEMENT_VALUE_LENGTH: MAX_REPLACEMENT_VALUE_LENGTH,
+    normalizePersonalReplacements: normalizedPersonalReplacements,
     normalizeSettings: normalizeSettings,
   });
 });

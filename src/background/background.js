@@ -37,11 +37,25 @@
 
   extensionApi.runtime.onMessage.addListener((message) => {
     if (message?.type === "squiggle-sage:check-spelling") {
-      return getChecker().then((checker) => ({
-        issues: checker.checkText(message.text, message.personalDictionary),
-        personalDictionaryCount: spellingApi.normalizePersonalWords(message.personalDictionary).length,
-        ready: true
-      }));
+      return getChecker().then((checker) => {
+        const personalIssues = spellingApi.checkPersonalReplacements(
+          message.text,
+          message.personalReplacements
+        );
+        const spellingIssues = checker.checkText(message.text, message.personalDictionary)
+          .filter((issue) => !personalIssues.some((personalIssue) => (
+            issue.offset < personalIssue.offset + personalIssue.length &&
+            issue.offset + issue.length > personalIssue.offset
+          )));
+        return {
+          issues: [...personalIssues, ...spellingIssues].sort((left, right) => left.offset - right.offset),
+          personalDictionaryCount: spellingApi.normalizePersonalWords(message.personalDictionary).length,
+          personalReplacementCount: spellingApi.normalizePersonalReplacements(
+            message.personalReplacements
+          ).length,
+          ready: true
+        };
+      });
     }
     if (message?.type === "squiggle-sage:get-spelling-status") {
       return getChecker().then(

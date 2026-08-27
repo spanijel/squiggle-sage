@@ -153,6 +153,8 @@ function readOverlayExpression() {
       replacementCount: number("squiggleSageReplacementCount"),
       firstMarkerX: number("squiggleSageFirstMarkerX"),
       firstMarkerY: number("squiggleSageFirstMarkerY"),
+      firstRuleId: host.dataset.squiggleSageFirstRuleId || null,
+      firstIssueCategory: host.dataset.squiggleSageFirstIssueCategory || null,
       lastMarkerX: number("squiggleSageLastMarkerX"),
       lastMarkerY: number("squiggleSageLastMarkerY"),
       firstReplacementX: number("squiggleSageFirstReplacementX"),
@@ -163,6 +165,12 @@ function readOverlayExpression() {
       modalMarkerY: number("squiggleSageModalMarkerY"),
       addToDictionaryX: number("squiggleSageAddToDictionaryX"),
       addToDictionaryY: number("squiggleSageAddToDictionaryY"),
+      undoAvailable: host.dataset.squiggleSageUndoAvailable === "true",
+      undoX: number("squiggleSageUndoX"),
+      undoY: number("squiggleSageUndoY"),
+      ignoreForSessionAvailable: host.dataset.squiggleSageIgnoreForSessionAvailable === "true",
+      ignoreForSessionX: number("squiggleSageIgnoreForSessionX"),
+      ignoreForSessionY: number("squiggleSageIgnoreForSessionY"),
       personalDictionaryCount: number("squiggleSagePersonalDictionaryCount"),
       spellingIssueCount: number("squiggleSageSpellingIssueCount"),
       spellingPersonalDictionaryCount: number("squiggleSageSpellingPersonalDictionaryCount")
@@ -495,6 +503,121 @@ async function run() {
       })()`
     );
 
+    const correctedOverlay = await evaluate(client, context, readOverlayExpression());
+    await clickAt(client, context, correctedOverlay.badgeX, correctedOverlay.badgeY);
+    const undoCard = await waitFor(
+      client,
+      context,
+      `(() => {
+        const host = document.querySelector("#squiggle-sage-overlay-host");
+        if (!host || host.dataset.squiggleSageUndoAvailable !== "true" || !Number.isFinite(Number(host.dataset.squiggleSageUndoX))) {
+          return JSON.stringify(null);
+        }
+        return ${readOverlayExpression()};
+      })()`
+    );
+    await clickAt(client, context, undoCard.undoX, undoCard.undoY);
+    const undoCorrection = await waitFor(
+      client,
+      context,
+      `JSON.stringify(document.querySelector("textarea").value === "I likededd this message.")`
+    );
+    const undoOverlay = await waitFor(
+      client,
+      context,
+      `(() => {
+        const host = document.querySelector("#squiggle-sage-overlay-host");
+        if (!host || Number(host.dataset.squiggleSageIssueCount) !== 1 || !Number.isFinite(Number(host.dataset.squiggleSageFirstSpellingMarkerX))) {
+          return JSON.stringify(null);
+        }
+        return ${readOverlayExpression()};
+      })()`
+    );
+    await clickAt(client, context, undoOverlay.firstSpellingMarkerX, undoOverlay.firstSpellingMarkerY);
+    const sessionIgnoreCard = await waitFor(
+      client,
+      context,
+      `(() => {
+        const host = document.querySelector("#squiggle-sage-overlay-host");
+        if (!host || host.dataset.squiggleSageIgnoreForSessionAvailable !== "true" || !Number.isFinite(Number(host.dataset.squiggleSageIgnoreForSessionX))) {
+          return JSON.stringify(null);
+        }
+        return ${readOverlayExpression()};
+      })()`
+    );
+    await clickAt(client, context, sessionIgnoreCard.ignoreForSessionX, sessionIgnoreCard.ignoreForSessionY);
+    const sessionIgnoreApplied = await waitFor(
+      client,
+      context,
+      `(() => {
+        const host = document.querySelector("#squiggle-sage-overlay-host");
+        return JSON.stringify(Boolean(host && Number(host.dataset.squiggleSageIssueCount) === 0));
+      })()`
+    );
+    await evaluate(
+      client,
+      context,
+      `(() => {
+        const editor = document.querySelector("textarea");
+        editor.value = "likededd and likededd";
+        editor.dispatchEvent(new InputEvent("input", { bubbles: true, composed: true, inputType: "insertText" }));
+        return JSON.stringify(true);
+      })()`
+    );
+    const sessionIgnoreMatches = await waitFor(
+      client,
+      context,
+      `(() => {
+        const host = document.querySelector("#squiggle-sage-overlay-host");
+        return JSON.stringify(Boolean(host && Number(host.dataset.squiggleSageIssueCount) === 0));
+      })()`
+    );
+
+    await client.send("browsingContext.navigate", { context, url: testUrl, wait: "complete" });
+    await waitFor(
+      client,
+      context,
+      `JSON.stringify(document.documentElement.dataset.squiggleSageLoaded === "true")`
+    );
+    const sessionResetRect = await evaluate(
+      client,
+      context,
+      `(() => {
+        const editor = document.querySelector("textarea");
+        editor.value = "I likededd this message.";
+        const rect = editor.getBoundingClientRect();
+        return JSON.stringify({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
+      })()`
+    );
+    await clickAt(client, context, sessionResetRect.x, sessionResetRect.y);
+    const sessionIgnoreClearedOnReload = await waitFor(
+      client,
+      context,
+      `(() => {
+        const host = document.querySelector("#squiggle-sage-overlay-host");
+        return JSON.stringify(Boolean(host && Number(host.dataset.squiggleSageIssueCount) === 1));
+      })()`
+    );
+
+    await evaluate(
+      client,
+      context,
+      `(() => {
+        const editor = document.querySelector("textarea");
+        editor.value = "I use local words daily.";
+        editor.dispatchEvent(new InputEvent("input", { bubbles: true, composed: true, inputType: "insertText" }));
+        return JSON.stringify(true);
+      })()`
+    );
+    await waitFor(
+      client,
+      context,
+      `(() => {
+        const host = document.querySelector("#squiggle-sage-overlay-host");
+        return JSON.stringify(Boolean(host && Number(host.dataset.squiggleSageIssueCount) === 0));
+      })()`
+    );
+
     await evaluate(
       client,
       context,
@@ -661,6 +784,12 @@ async function run() {
       && spellingOverlay.issueCount === 1
       && spellingCard.replacementCount > 0
       && spellingCorrection
+      && undoCard.undoAvailable
+      && undoCorrection
+      && sessionIgnoreCard.ignoreForSessionAvailable
+      && sessionIgnoreApplied
+      && sessionIgnoreMatches
+      && sessionIgnoreClearedOnReload
       && personalDictionaryAdded
       && personalDictionaryPersisted
       && cleanEditorOverlay.badgeText === "✓"
@@ -686,6 +815,12 @@ async function run() {
       spellingOverlay,
       spellingCard,
       spellingCorrection,
+      undoCard,
+      undoCorrection,
+      sessionIgnoreCard,
+      sessionIgnoreApplied,
+      sessionIgnoreMatches,
+      sessionIgnoreClearedOnReload,
       personalDictionaryAdded,
       personalDictionaryPersisted,
       cleanEditorOverlay,

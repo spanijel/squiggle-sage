@@ -433,6 +433,104 @@ input[type="search"] {
   text-align: center;
 }
 
+.replacement-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 0.7fr);
+  gap: 16px 20px;
+  padding: 20px 22px 22px;
+}
+
+.replacement-add {
+  display: grid;
+  gap: 7px;
+}
+
+.replacement-add > small,
+.local-storage-note {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.replacement-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 8px;
+}
+
+.replacement-summary {
+  display: flex;
+  grid-column: 1 / -1;
+  min-height: 20px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+#replacement-status.success {
+  color: var(--success);
+}
+
+#replacement-status.error {
+  color: var(--danger);
+}
+
+.replacement-list {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 8px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.replacement-list li {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 10px 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-muted);
+}
+
+.replacement-pair {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+}
+
+.replacement-pair > span:not(.replacement-arrow):not(.visually-hidden) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.replacement-arrow {
+  color: var(--accent);
+  font-weight: 750;
+}
+
+.replacement-empty,
+.local-storage-note {
+  grid-column: 1 / -1;
+}
+
+.replacement-empty {
+  padding: 15px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+}
+
 textarea {
   min-height: 96px;
   padding: 10px;
@@ -673,10 +771,23 @@ input:disabled {
     grid-template-columns: 1fr;
   }
 
+  .replacement-controls,
+  .replacement-fields {
+    grid-template-columns: 1fr;
+  }
+
   .dictionary-search,
   .dictionary-summary,
   .dictionary-list,
   .dictionary-empty {
+    grid-column: 1;
+  }
+
+  .replacement-search,
+  .replacement-summary,
+  .replacement-list,
+  .replacement-empty,
+  .local-storage-note {
     grid-column: 1;
   }
 
