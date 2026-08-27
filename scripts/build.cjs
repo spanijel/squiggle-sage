@@ -19,6 +19,13 @@ const packageEntries = [
   "assets/icon.svg",
   "src/shared/defaults.js",
   "src/core/checker.js",
+  "src/core/spelling.js",
+  "src/background/background.js",
+  "src/vendor/typo-js/typo.js",
+  "src/vendor/typo-js/LICENSE.txt",
+  "src/data/en-us/index.aff",
+  "src/data/en-us/index.dic",
+  "src/data/en-us/LICENSE.txt",
   "src/content/content.css",
   "src/content/content.js",
   "src/content/highlighter.js",
@@ -39,13 +46,16 @@ const sourceEntries = [...new Set([
   "README.md",
   "docs/amo-submission.md",
   "docs/capabilities.md",
+  "docs/dictionary-decision.md",
   "docs/firefox-distribution.md",
   "package.json",
   "scripts/build.cjs",
   "scripts/firefox-smoke.cjs",
   "scripts/validate.cjs",
   "test/manual-smoke.html",
-  "tests/checker.test.js"
+  "tests/checker.test.js",
+  "tests/settings.test.js",
+  "tests/spelling.test.js"
 ])];
 
 fs.mkdirSync(outputDirectory, { recursive: true });

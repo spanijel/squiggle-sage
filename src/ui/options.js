@@ -7,13 +7,15 @@
   const fallbackSettings = {
     enabled: true,
     nativeSpellcheck: true,
+    spelling: true,
     grammar: true,
     style: true,
     typography: true,
     capitalization: true,
     debounceMs: 350,
     disabledRules: [],
-    disabledSites: []
+    disabledSites: [],
+    personalDictionary: []
   };
   const categoryLabels = {
     grammar: "Grammar",
@@ -25,16 +27,25 @@
   const form = document.querySelector("#settings-form");
   const enabledInput = document.querySelector("#enabled");
   const nativeSpellcheckInput = document.querySelector("#native-spellcheck");
+  const spellingInput = document.querySelector("#spelling");
   const grammarInput = document.querySelector("#grammar");
   const styleInput = document.querySelector("#style");
   const typographyInput = document.querySelector("#typography");
   const capitalizationInput = document.querySelector("#capitalization");
   const debounceInput = document.querySelector("#debounce-ms");
   const disabledSitesInput = document.querySelector("#disabled-sites");
+  const dictionaryWordInput = document.querySelector("#dictionary-word");
+  const dictionaryAddButton = document.querySelector("#dictionary-add-button");
+  const dictionarySearchInput = document.querySelector("#dictionary-search");
+  const dictionaryCount = document.querySelector("#dictionary-count");
+  const dictionaryStatus = document.querySelector("#dictionary-status");
+  const dictionaryList = document.querySelector("#dictionary-list");
+  const dictionaryEmpty = document.querySelector("#dictionary-empty");
   const rulesContainer = document.querySelector("#rules-container");
   const saveStatus = document.querySelector("#save-status");
   const saveButton = document.querySelector("#save-button");
   const resetButton = document.querySelector("#reset-button");
+  let personalDictionary = [];
 
   function normalizeSettings(input) {
     if (typeof defaultsApi.normalizeSettings === "function") {
@@ -92,6 +103,83 @@
   function setBusy(busy) {
     saveButton.disabled = busy;
     resetButton.disabled = busy;
+    dictionaryAddButton.disabled = busy;
+    for (const button of dictionaryList.querySelectorAll("button")) {
+      button.disabled = busy;
+    }
+  }
+
+  function setDictionaryStatus(message, kind = "") {
+    dictionaryStatus.textContent = message;
+    dictionaryStatus.className = kind;
+  }
+
+  function personalWord(value) {
+    const normalized = String(value || "")
+      .normalize("NFC")
+      .replace(/\u2019/g, "'")
+      .trim()
+      .toLowerCase();
+    return normalized.length <= 64 && /^[a-z]+(?:['-][a-z]+)*$/.test(normalized)
+      ? normalized
+      : "";
+  }
+
+  function renderPersonalDictionary() {
+    const query = dictionarySearchInput.value.trim().toLowerCase();
+    const visibleWords = personalDictionary.filter((word) => word.includes(query));
+    dictionaryList.replaceChildren();
+
+    for (const word of visibleWords) {
+      const item = document.createElement("li");
+      const wordLabel = document.createElement("span");
+      wordLabel.textContent = word;
+
+      const removeButton = document.createElement("button");
+      removeButton.className = "dictionary-remove";
+      removeButton.type = "button";
+      removeButton.textContent = "Remove";
+      removeButton.setAttribute("aria-label", `Remove ${word} from the personal dictionary`);
+      removeButton.addEventListener("click", () => {
+        personalDictionary = personalDictionary.filter((candidate) => candidate !== word);
+        renderPersonalDictionary();
+        setDictionaryStatus(`Removed “${word}”. Save settings to apply.`, "success");
+        setStatus("Unsaved changes");
+      });
+
+      item.append(wordLabel, removeButton);
+      dictionaryList.append(item);
+    }
+
+    const total = personalDictionary.length;
+    dictionaryCount.textContent = `${total} personal word${total === 1 ? "" : "s"}`;
+    dictionaryEmpty.hidden = visibleWords.length > 0;
+    dictionaryEmpty.textContent = total === 0
+      ? "No personal words yet."
+      : "No personal words match your search.";
+  }
+
+  function addPersonalWord() {
+    const rawWord = dictionaryWordInput.value;
+    const word = personalWord(rawWord);
+    if (!word) {
+      setDictionaryStatus("Enter one word using letters, apostrophes, or hyphens.", "error");
+      dictionaryWordInput.focus();
+      return;
+    }
+    if (personalDictionary.includes(word)) {
+      setDictionaryStatus(`“${word}” is already in your personal dictionary.`, "error");
+      dictionaryWordInput.select();
+      return;
+    }
+
+    personalDictionary = [...personalDictionary, word].sort();
+    dictionaryWordInput.value = "";
+    dictionarySearchInput.value = "";
+    renderPersonalDictionary();
+    setDictionaryStatus(`Added “${word}”. Save settings to apply.`, "success");
+    setStatus("Unsaved changes");
+    dictionaryWordInput.focus();
   }
 
   function formatCategory(category) {
@@ -182,12 +270,18 @@
     buildRuleControls();
     enabledInput.checked = normalized.enabled;
     nativeSpellcheckInput.checked = normalized.nativeSpellcheck;
+    spellingInput.checked = normalized.spelling;
     grammarInput.checked = normalized.grammar;
     styleInput.checked = normalized.style;
     typographyInput.checked = normalized.typography;
     capitalizationInput.checked = normalized.capitalization;
     debounceInput.value = normalized.debounceMs;
     disabledSitesInput.value = normalized.disabledSites.join("\n");
+    personalDictionary = [...normalized.personalDictionary];
+    dictionaryWordInput.value = "";
+    dictionarySearchInput.value = "";
+    setDictionaryStatus("");
+    renderPersonalDictionary();
 
     const disabledRules = new Set(normalized.disabledRules);
     for (const input of rulesContainer.querySelectorAll("input[data-rule-id]")) {
@@ -240,13 +334,15 @@
     return normalizeSettings({
       enabled: enabledInput.checked,
       nativeSpellcheck: nativeSpellcheckInput.checked,
+      spelling: spellingInput.checked,
       grammar: grammarInput.checked,
       style: styleInput.checked,
       typography: typographyInput.checked,
       capitalization: capitalizationInput.checked,
       debounceMs,
       disabledSites: parseDisabledSites(disabledSitesInput.value),
-      disabledRules
+      disabledRules,
+      personalDictionary
     });
   }
 
@@ -266,7 +362,19 @@
     input.addEventListener("change", syncDependentControls);
   }
 
-  form.addEventListener("input", () => {
+  dictionaryAddButton.addEventListener("click", addPersonalWord);
+  dictionaryWordInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      addPersonalWord();
+    }
+  });
+  dictionarySearchInput.addEventListener("input", renderPersonalDictionary);
+
+  form.addEventListener("input", (event) => {
+    if (event.target === dictionaryWordInput || event.target === dictionarySearchInput) {
+      return;
+    }
     if (!saveButton.disabled) {
       setStatus("Unsaved changes");
     }
@@ -297,7 +405,7 @@
   });
 
   resetButton.addEventListener("click", async () => {
-    if (!window.confirm("Reset all SquiggleSage settings and disabled websites to their defaults?")) {
+    if (!window.confirm("Reset all SquiggleSage settings, disabled websites, and personal words to their defaults?")) {
       return;
     }
 

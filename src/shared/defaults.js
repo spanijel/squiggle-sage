@@ -14,6 +14,7 @@
   var DEFAULT_SETTINGS = Object.freeze({
     enabled: true,
     nativeSpellcheck: true,
+    spelling: true,
     grammar: true,
     style: true,
     typography: true,
@@ -21,6 +22,7 @@
     debounceMs: 350,
     disabledRules: Object.freeze([]),
     disabledSites: Object.freeze([]),
+    personalDictionary: Object.freeze([]),
   });
 
   function normalizedStringArray(value) {
@@ -53,6 +55,41 @@
     return typeof input[key] === "boolean" ? input[key] : DEFAULT_SETTINGS[key];
   }
 
+  function normalizedPersonalDictionary(value) {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+
+    var seen = Object.create(null);
+    var normalized = [];
+
+    value.forEach(function (item) {
+      if (typeof item !== "string") {
+        return;
+      }
+
+      var candidate = item
+        .normalize("NFC")
+        .replace(/\u2019/g, "'")
+        .trim()
+        .toLowerCase();
+
+      if (
+        !candidate ||
+        candidate.length > 64 ||
+        !/^[a-z]+(?:['-][a-z]+)*$/.test(candidate) ||
+        seen[candidate]
+      ) {
+        return;
+      }
+
+      seen[candidate] = true;
+      normalized.push(candidate);
+    });
+
+    return normalized.sort();
+  }
+
   function normalizeSettings(value) {
     var input = value && typeof value === "object" ? value : {};
     var rawDebounce = Number(input.debounceMs);
@@ -62,6 +99,7 @@
     return {
       enabled: booleanSetting(input, "enabled"),
       nativeSpellcheck: booleanSetting(input, "nativeSpellcheck"),
+      spelling: booleanSetting(input, "spelling"),
       grammar: booleanSetting(input, "grammar"),
       style: booleanSetting(input, "style"),
       typography: booleanSetting(input, "typography"),
@@ -69,6 +107,7 @@
       debounceMs: debounceMs,
       disabledRules: normalizedStringArray(input.disabledRules),
       disabledSites: normalizedStringArray(input.disabledSites),
+      personalDictionary: normalizedPersonalDictionary(input.personalDictionary),
     };
   }
 

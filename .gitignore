@@ -4,4 +4,5 @@ web-ext-artifacts/
 .DS_Store
 npm-debug.log*
 XX-errors/
-.firefox-smoke-profile/
+.firefox-smoke*-profile/
+plans/

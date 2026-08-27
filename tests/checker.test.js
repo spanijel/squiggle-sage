@@ -13,6 +13,7 @@ test("default settings expose the complete local checker configuration", () => {
   assert.deepEqual(defaults.DEFAULT_SETTINGS, {
     enabled: true,
     nativeSpellcheck: true,
+    spelling: true,
     grammar: true,
     style: true,
     typography: true,
@@ -20,6 +21,7 @@ test("default settings expose the complete local checker configuration", () => {
     debounceMs: 350,
     disabledRules: [],
     disabledSites: [],
+    personalDictionary: [],
   });
   assert(Object.isFrozen(defaults.DEFAULT_SETTINGS));
 });
@@ -28,6 +30,7 @@ test("normalizeSettings validates scalars and copies string lists", () => {
   const normalized = defaults.normalizeSettings({
     enabled: false,
     nativeSpellcheck: false,
+    spelling: true,
     grammar: false,
     debounceMs: 12,
     disabledRules: [" RULE_A ", "RULE_A", "", 12],
@@ -37,6 +40,7 @@ test("normalizeSettings validates scalars and copies string lists", () => {
   assert.deepEqual(normalized, {
     enabled: false,
     nativeSpellcheck: false,
+    spelling: true,
     grammar: false,
     style: true,
     typography: true,
@@ -44,6 +48,7 @@ test("normalizeSettings validates scalars and copies string lists", () => {
     debounceMs: 100,
     disabledRules: ["RULE_A"],
     disabledSites: ["example.test"],
+    personalDictionary: [],
   });
 
   assert.equal(defaults.normalizeSettings({ debounceMs: 9000 }).debounceMs, 5000);
@@ -156,6 +161,185 @@ test("overlapping candidates resolve to one deterministic issue", () => {
 
   assert.deepEqual(issues.map((issue) => issue.ruleId), ["REPEATED_WORD"]);
   assert.equal(issues[0].replacements[0], "is");
+});
+
+test("bounded your/you're and its/it's rules avoid possessive uses", () => {
+  const positives = checker.checkText(
+    "your definitely right. Your not late. its a start. Its been useful.",
+    { capitalization: false, style: false, typography: false }
+  );
+
+  assert.deepEqual(
+    positives.map((issue) => [issue.ruleId, issue.replacements[0]]),
+    [
+      ["YOUR_YOURE", "you're"],
+      ["YOUR_YOURE", "You're"],
+      ["ITS_ITS", "it's"],
+      ["ITS_ITS", "It's"],
+    ]
+  );
+  assert.deepEqual(
+    checker.checkText("We defend your right and thank you for your welcome. Its very nature held its color.", {
+      capitalization: false,
+      style: false,
+      typography: false,
+    }),
+    []
+  );
+
+  const overlap = checker.checkText("your definitely right.", {
+    style: false,
+    typography: false,
+  });
+  assert.deepEqual(overlap.map((issue) => issue.ruleId), ["YOUR_YOURE"]);
+  assert.deepEqual(
+    checker.checkText("its a start.", {
+      style: false,
+      typography: false,
+    }).map((issue) => issue.ruleId),
+    ["ITS_ITS"]
+  );
+});
+
+test("then/than only fires in explicit comparison patterns", () => {
+  const positives = checker.checkText("This is better then that and more then enough.", {
+    capitalization: false,
+    style: false,
+    typography: false,
+  });
+  assert.deepEqual(
+    positives.map((issue) => [issue.ruleId, issue.replacements[0]]),
+    [
+      ["THEN_THAN", "than"],
+      ["THEN_THAN", "than"],
+    ]
+  );
+  assert.deepEqual(
+    checker.checkText("We needed more, then we stopped.", {
+      capitalization: false,
+      style: false,
+      typography: false,
+    }),
+    []
+  );
+
+  const overlap = checker.checkText("more then then", {
+    capitalization: false,
+    style: false,
+    typography: false,
+  });
+  assert.deepEqual(overlap.map((issue) => issue.ruleId), ["REPEATED_WORD"]);
+});
+
+test("repeated two-word phrases are deterministic and do not absorb normal repeats", () => {
+  const positive = checker.checkText("Please arrive on time on time.", {
+    capitalization: false,
+    style: false,
+    typography: false,
+  });
+  assert.deepEqual(
+    positive.map((issue) => [issue.ruleId, issue.replacements[0]]),
+    [["REPEATED_PHRASE", "on time"]]
+  );
+  assert.deepEqual(
+    checker.checkText("I had had enough and said bye bye.", {
+      capitalization: false,
+      style: false,
+      typography: false,
+    }),
+    []
+  );
+
+  const overlap = checker.checkText("in in in in", {
+    capitalization: false,
+    style: false,
+    typography: false,
+  });
+  assert.deepEqual(overlap.map((issue) => issue.ruleId), ["REPEATED_PHRASE"]);
+});
+
+test("modal base-form and demonstrative agreement rules stay tightly scoped", () => {
+  const positives = checker.checkText("This are ready. Those is done. We could had helped.", {
+    capitalization: false,
+    style: false,
+    typography: false,
+  });
+  assert.deepEqual(
+    positives.map((issue) => [issue.ruleId, issue.replacements[0]]),
+    [
+      ["BASIC_SUBJECT_VERB_AGREEMENT", "is"],
+      ["BASIC_SUBJECT_VERB_AGREEMENT", "are"],
+      ["MODAL_BASE_FORM", "have"],
+    ]
+  );
+  assert.deepEqual(
+    checker.checkText("This is ready. Those are done. We could have helped. Mustard has flavor.", {
+      capitalization: false,
+      style: false,
+      typography: false,
+    }),
+    []
+  );
+
+  assert.deepEqual(
+    checker.checkText("These is is", {
+      capitalization: false,
+      style: false,
+      typography: false,
+    }).map((issue) => issue.ruleId),
+    ["REPEATED_WORD"]
+  );
+  assert.deepEqual(
+    checker.checkText("could has has", {
+      capitalization: false,
+      style: false,
+      typography: false,
+    }).map((issue) => issue.ruleId),
+    ["REPEATED_WORD"]
+  );
+});
+
+test("typography additions handle clear repeats and sentence boundaries", () => {
+  const positives = checker.checkText("Wait!!This works;;really.", {
+    capitalization: false,
+    grammar: false,
+    style: false,
+  });
+  assert.deepEqual(
+    positives.map((issue) => [issue.ruleId, issue.replacements[0]]),
+    [
+      ["REPEATED_PUNCTUATION", "!"],
+      ["REPEATED_PUNCTUATION", ";"],
+    ]
+  );
+
+  const missingSpace = checker.checkText("Done.The next task is ready!We can begin.", {
+    capitalization: false,
+    grammar: false,
+    style: false,
+  });
+  assert.deepEqual(
+    missingSpace.map((issue) => [issue.ruleId, issue.replacements[0]]),
+    [
+      ["MISSING_SPACE_AFTER_SENTENCE", ". "],
+      ["MISSING_SPACE_AFTER_SENTENCE", "! "],
+    ]
+  );
+  assert.deepEqual(
+    checker.checkText("Wait... What?! Visit example.com/path?q=1.", {
+      capitalization: false,
+      grammar: false,
+      style: false,
+    }),
+    []
+  );
+
+  const overlap = checker.checkText("Done!!The next task is ready.", {
+    capitalization: false,
+    grammar: false,
+    style: false,
+  });
+  assert.deepEqual(overlap.map((issue) => issue.ruleId), ["REPEATED_PUNCTUATION"]);
 });
 
 test("disabled checker and empty input return no issues", () => {

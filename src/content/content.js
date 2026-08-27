@@ -4,8 +4,9 @@
   const extensionApi = global.browser || global.chrome;
   const defaultsApi = global.SquiggleSageDefaults;
   const checkerApi = global.SquiggleSageChecker;
+  const spellingApi = global.SquiggleSageSpelling;
   const highlighterApi = global.SquiggleSageHighlighter;
-  if (!extensionApi || !defaultsApi || !checkerApi || !highlighterApi) {
+  if (!extensionApi || !defaultsApi || !checkerApi || !spellingApi || !highlighterApi) {
     return;
   }
 
@@ -158,7 +159,7 @@
 
   function categoryEnabled(issue) {
     if (issue.category === "spelling") {
-      return true;
+      return settings.spelling;
     }
     if (issue.category === "style") {
       return settings.style;
@@ -170,6 +171,37 @@
       return settings.capitalization;
     }
     return settings.grammar;
+  }
+
+  function sendRuntimeMessage(message) {
+    if (global.browser) {
+      return extensionApi.runtime.sendMessage(message);
+    }
+    return new Promise((resolve, reject) => {
+      extensionApi.runtime.sendMessage(message, (response) => {
+        const error = extensionApi.runtime.lastError;
+        if (error) {
+          reject(error);
+          return;
+        }
+        resolve(response);
+      });
+    });
+  }
+
+  async function checkSpelling(text) {
+    if (!settings.spelling) {
+      return { issues: [], personalDictionaryCount: 0 };
+    }
+    const response = await sendRuntimeMessage({
+      type: "squiggle-sage:check-spelling",
+      text,
+      personalDictionary: settings.personalDictionary
+    });
+    return {
+      issues: Array.isArray(response?.issues) ? response.issues : [],
+      personalDictionaryCount: Number(response?.personalDictionaryCount) || 0
+    };
   }
 
   class EditorController {
@@ -211,7 +243,7 @@
       this.timer = setTimeout(() => this.check(revision), Math.max(0, delay));
     }
 
-    check(revision) {
+    async check(revision) {
       if (revision !== this.revision || this.composing || !siteCheckingEnabled()) {
         this.clear();
         return;
@@ -222,10 +254,32 @@
         this.render();
         return;
       }
-      const issues = checkerApi.checkText(text, settings);
-      this.issues = normalizeIssues(issues, text)
+      const localIssues = checkerApi.checkText(text, settings);
+      let spellingIssues = [];
+      let spellingPersonalDictionaryCount = 0;
+      if (settings.spelling) {
+        try {
+          const spellingResult = await checkSpelling(text);
+          spellingIssues = spellingResult.issues;
+          spellingPersonalDictionaryCount = spellingResult.personalDictionaryCount;
+        } catch (_error) {
+          spellingIssues = [];
+        }
+      }
+      if (
+        revision !== this.revision ||
+        this.composing ||
+        activeController !== this ||
+        !this.element.isConnected ||
+        !siteCheckingEnabled()
+      ) {
+        return;
+      }
+      this.issues = normalizeIssues([...localIssues, ...spellingIssues], text)
         .filter(categoryEnabled)
         .filter((issue) => !this.ignored.has(issueKey(issue, text)));
+      this.lastSpellingIssueCount = spellingIssues.length;
+      this.lastSpellingPersonalDictionaryCount = spellingPersonalDictionaryCount;
       this.render();
     }
 
@@ -233,7 +287,15 @@
       if (activeController !== this || !siteCheckingEnabled()) {
         return;
       }
-      getOverlay().render(this.element, this.issues);
+      const view = getOverlay();
+      view.host.dataset.squiggleSagePersonalDictionaryCount = String(
+        settings.personalDictionary?.length || 0
+      );
+      view.host.dataset.squiggleSageSpellingIssueCount = String(this.lastSpellingIssueCount || 0);
+      view.host.dataset.squiggleSageSpellingPersonalDictionaryCount = String(
+        this.lastSpellingPersonalDictionaryCount || 0
+      );
+      view.render(this.element, this.issues);
     }
 
     clear() {
@@ -324,6 +386,7 @@
 
     destroy() {
       clearTimeout(this.timer);
+      this.revision += 1;
       this.element.removeEventListener("input", this.onInput);
       this.element.removeEventListener("compositionstart", this.onCompositionStart);
       this.element.removeEventListener("compositionend", this.onCompositionEnd);
@@ -341,6 +404,20 @@
     }
     if (action.type === "ignore") {
       activeController.ignore(action.issue);
+      return;
+    }
+    if (action.type === "add-to-dictionary") {
+      const word = spellingApi.normalizePersonalWord(action.issue.original);
+      if (!word) {
+        return;
+      }
+      const personalDictionary = spellingApi.normalizePersonalWords([
+        ...(settings.personalDictionary || []),
+        word
+      ]);
+      settings = defaultsApi.normalizeSettings({ ...settings, personalDictionary });
+      await extensionApi.storage.local.set({ settings });
+      activeController?.schedule(0);
       return;
     }
     if (action.type === "disable-rule") {

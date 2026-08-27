@@ -10,6 +10,7 @@
   --accent-hover: #3d4bc4;
   --accent-soft: #eceefe;
   --success: #198754;
+  --warning: #b26a00;
   --danger: #c53b4f;
   --shadow: 0 8px 28px rgba(29, 40, 72, 0.1);
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -27,6 +28,7 @@
     --accent-hover: #aab2ff;
     --accent-soft: #303654;
     --success: #55c68c;
+    --warning: #ffbd62;
     --danger: #ff8292;
     --shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
   }
@@ -265,6 +267,10 @@ button:focus-visible {
 
 .status-dot.active {
   background: var(--success);
+}
+
+.status-dot.warning {
+  background: var(--warning);
 }
 
 .status-message {

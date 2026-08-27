@@ -2,13 +2,20 @@
   "manifest_version": 3,
   "name": "SquiggleSage",
   "short_name": "SquiggleSage",
-  "version": "0.1.3",
+  "version": "0.2.0",
   "description": "Local spelling and English writing suggestions for the Firefox browser. No text is sent to a server.",
   "incognito": "not_allowed",
   "permissions": [
     "activeTab",
     "storage"
   ],
+  "background": {
+    "scripts": [
+      "src/vendor/typo-js/typo.js",
+      "src/core/spelling.js",
+      "src/background/background.js"
+    ]
+  },
   "action": {
     "default_title": "SquiggleSage",
     "default_icon": {
@@ -38,6 +45,7 @@
       "js": [
         "src/shared/defaults.js",
         "src/core/checker.js",
+        "src/core/spelling.js",
         "src/content/highlighter.js",
         "src/content/content.js"
       ],

@@ -2,12 +2,13 @@
 
 SquiggleSage is a Firefox-first writing assistant whose checks run entirely inside the browser.
 
-Version `0.1.3` supports ordinary `textarea`, text `input`, and `contenteditable` editors. Firefox provides native spelling dictionaries and red spelling underlines. SquiggleSage adds cautious English grammar, capitalization, typography, and style rules with prominent red squiggles and clickable corrections.
+Version `0.2.0` supports ordinary `textarea`, text `input`, and `contenteditable` editors. It adds bundled, local American-English spelling suggestions to SquiggleSage's existing grammar, capitalization, typography, and style checks. Firefox's native spelling underlines can remain enabled alongside SquiggleSage.
 
 ## What works now
 
 - Continuous, debounced checking while you type.
-- Firefox-native spelling underlines and right-click spelling corrections.
+- Bundled American-English spelling checks and clickable corrections, including errors such as `likededd`.
+- A local personal dictionary for accepted words, plus optional Firefox-native spelling underlines.
 - Prominent red grammar, capitalization, typography, and style squiggles.
 - Clickable suggestion cards with guarded one-click replacement.
 - A draggable issue-count badge on the active editor, with keyboard repositioning.
@@ -16,7 +17,7 @@ Version `0.1.3` supports ordinary `textarea`, text `input`, and `contenteditable
 - Global and exact-hostname enable/disable controls.
 - Settings for rule categories, individual rules, and typing delay.
 - All-frame support for ordinary HTTP, HTTPS, and local-file pages.
-- No network endpoint, analytics, accounts, cloud service, or editor-text storage.
+- No network request, analytics, logging, accounts, cloud service, or editor-text storage.
 
 ## Try it in Firefox
 
@@ -36,21 +37,21 @@ Load it temporarily:
 4. Choose this project's `manifest.json`.
 5. Reload any page that was already open.
 
-Use [test/manual-smoke.html](test/manual-smoke.html) for a quick manual check. Focus each field. Firefox should mark `mispeling` in red, and SquiggleSage should flag examples such as `the the`, lowercase `i`, and `could of`.
+Use [test/manual-smoke.html](test/manual-smoke.html) for a quick manual check. Focus each field. SquiggleSage should flag `likededd` or `mispeling` as a possible misspelling and continue to flag examples such as `the the`, lowercase `i`, and `could of`.
 
-If misspellings are not red, right-click inside the editor, enable **Check Spelling**, and select an installed dictionary under **Languages**. SquiggleSage uses Firefox's native spelling feature and does not ship a separate dictionary.
+Choose a spelling suggestion to replace the word, or add a valid word to SquiggleSage's personal dictionary. The personal dictionary stays in Firefox's local extension storage. Firefox-native spelling remains a separate optional aid controlled through Firefox's **Check Spelling** and **Languages** menus.
 
 Temporary add-ons disappear when Firefox restarts. Release and Beta Firefox require Mozilla signing for persistent installation. See [Firefox distribution and signing](docs/firefox-distribution.md).
 
 ## Local processing
 
-| Function | Implementation | Text transmission by SquiggleSage |
+| Function | Implementation | Network transmission by SquiggleSage |
 |---|---|---|
-| Spelling | Firefox's installed dictionaries | None |
-| Grammar and style | Eleven cautious English rules bundled with the extension | None |
-| Suggestions and replacement | Content script and local overlay | None |
+| Spelling | Bundled Typo.js engine and American-English SCOWL/Hunspell dictionary | None |
+| Grammar and style | Eighteen cautious English rules bundled with the extension | None |
+| Suggestions and replacement | Content script, background script, and local overlay | None |
 
-The manifest declares no data collection. To provide automatic checks, SquiggleSage's content scripts run on HTTP, HTTPS, and local-file pages, including embedded frames and eligible blank frames. Firefox may describe this as access to data on all websites. Within each page or embedded frame, the access is used for the most recently focused or activated supported editor. The extension does not scan unrelated page text, transmit editor text or page content, or contain a network connection source. It declares no separate `host_permissions` or `optional_host_permissions` entry.
+The manifest declares no data collection. To provide automatic checks, SquiggleSage's content scripts run on HTTP, HTTPS, and local-file pages, including embedded frames and eligible blank frames. Firefox may describe this as access to data on all websites. Within each page or embedded frame, the access is used for the most recently focused or activated supported editor. The content script passes the active editor text through Firefox's internal extension messaging to the background spelling engine. The text is not sent over a network, logged, or persisted. SquiggleSage does not scan unrelated page text and declares no separate `host_permissions` or `optional_host_permissions` entry.
 
 ## Development
 
@@ -66,7 +67,7 @@ node scripts/build.cjs
 - `squiggle-sage-<version>-source.zip` - readable source, documentation, tests, and build scripts for review.
 - `SHA256SUMS-<version>.txt` - integrity hashes for both archives.
 
-The runtime and validation paths have no third-party dependency. Building archives requires Node.js 20 or newer and Info-ZIP 3.0 on `PATH` as `zip`. See [BUILD.md](BUILD.md) for the exact reviewer build procedure. Where Mozilla's `web-ext` is already available, it can optionally provide an additional manifest lint:
+The XPI includes the human-readable Typo.js spelling engine and a SCOWL/Hunspell American-English dictionary. Their license texts are packaged with the extension and summarized in [NOTICE.md](NOTICE.md). No package installation, download, minification, transpilation, bundling, or code generation is required. Building archives requires Node.js 20 or newer and a supported ZIP tool. See [BUILD.md](BUILD.md) for the exact reviewer build procedure. Where Mozilla's `web-ext` is already available, it can optionally provide an additional manifest lint:
 
 ```bash
 npm run lint:webext
@@ -76,10 +77,10 @@ The optional lint is not required to validate, build, or submit the readable XPI
 
 ## Current limits
 
-- Built-in grammar, capitalization, typography, and style rules are English-only. Spelling can use any Firefox dictionary installed by the user.
+- Bundled spelling is American English; Firefox-native spelling can use any dictionary installed by the user.
 - Generic DOM editors are supported. Google Docs, Google Slides, canvas editors, closed shadow roots, and some framework-specific rich editors need dedicated adapters.
 - Rich-editor support models ordinary block elements, explicit line breaks, and protected embedded nodes.
-- Personal dictionary management remains in Firefox through **Add to Dictionary**.
+- SquiggleSage's personal dictionary is local to this Firefox profile and does not synchronize.
 - There are no synonyms, AI rewrites, translation, statistics, cross-device sync, or account features.
 - Named web services still need site-specific Firefox validation before support is claimed.
 
@@ -87,7 +88,7 @@ See [docs/capabilities.md](docs/capabilities.md) for the capability matrix, [PRI
 
 ## License
 
-SquiggleSage is MIT-licensed. Its source, interface, icon, and bundled writing rules are maintained in this repository.
+SquiggleSage's original source, interface, icon, and writing rules are MIT-licensed. The bundled Typo.js engine and SCOWL/Hunspell dictionary retain their respective third-party licenses; see [NOTICE.md](NOTICE.md).
 
 SquiggleSage is an independent project and is not affiliated with or endorsed by Mozilla.
 

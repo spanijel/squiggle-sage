@@ -6,13 +6,15 @@
   const fallbackSettings = {
     enabled: true,
     nativeSpellcheck: true,
+    spelling: true,
     grammar: true,
     style: true,
     typography: true,
     capitalization: true,
     debounceMs: 350,
     disabledRules: [],
-    disabledSites: []
+    disabledSites: [],
+    personalDictionary: []
   };
 
   const enabledToggle = document.querySelector("#enabled-toggle");
@@ -29,6 +31,7 @@
   let currentHostname = null;
   let currentTabId = null;
   let contentStatus = null;
+  let spellingStatus = null;
 
   function normalizeSettings(input) {
     if (typeof defaultsApi.normalizeSettings === "function") {
@@ -89,6 +92,26 @@
           return;
         }
         resolve(tabs);
+      });
+    });
+  }
+
+  function getSpellingStatus() {
+    if (!settings.spelling || !extensionApi.runtime.sendMessage) {
+      return Promise.resolve(null);
+    }
+    if (globalThis.browser) {
+      return extensionApi.runtime
+        .sendMessage({ type: "squiggle-sage:get-spelling-status" })
+        .catch(() => ({ ready: false }));
+    }
+    return new Promise((resolve) => {
+      extensionApi.runtime.sendMessage({ type: "squiggle-sage:get-spelling-status" }, (status) => {
+        if (extensionApi.runtime.lastError) {
+          resolve({ ready: false });
+          return;
+        }
+        resolve(status || { ready: false });
       });
     });
   }
@@ -154,20 +177,35 @@
 
   function render() {
     enabledToggle.checked = Boolean(settings.enabled);
+    const writingRulesEnabled = Boolean(
+      settings.grammar || settings.style || settings.typography || settings.capitalization
+    );
 
-    checkerTitle.textContent = "Built-in English checker";
+    checkerTitle.textContent = "Local checking engine";
     checkerDot.classList.toggle("active", Boolean(settings.enabled));
-    checkerDot.classList.remove("warning");
+    checkerDot.classList.toggle("warning", Boolean(settings.enabled && settings.spelling && spellingStatus?.ready === false));
 
     if (!settings.enabled) {
       checkerDetail.textContent = "Checking is turned off";
+    } else if (settings.spelling && spellingStatus?.ready === false) {
+      checkerDetail.textContent = writingRulesEnabled
+        ? "Writing rules available; spelling unavailable"
+        : "Local spelling is unavailable";
     } else if (contentStatus?.active) {
       const count = contentStatus.issueCount || 0;
       checkerDetail.textContent = `Active field - ${count} suggestion${count === 1 ? "" : "s"}`;
     } else {
+      let squiggleSageChecks = "SquiggleSage checks are off";
+      if (settings.spelling && writingRulesEnabled) {
+        squiggleSageChecks = "SquiggleSage spelling and writing rules";
+      } else if (settings.spelling) {
+        squiggleSageChecks = "SquiggleSage spelling suggestions";
+      } else if (writingRulesEnabled) {
+        squiggleSageChecks = "SquiggleSage writing rules";
+      }
       checkerDetail.textContent = settings.nativeSpellcheck
-        ? "English grammar and Firefox spelling"
-        : "Built-in English grammar rules";
+        ? `${squiggleSageChecks}; Firefox spelling is on`
+        : squiggleSageChecks;
     }
 
     if (!currentHostname) {
@@ -193,7 +231,10 @@
     const normalized = normalizeSettings(nextSettings);
     await setStoredSettings(normalized);
     settings = normalized;
-    contentStatus = await getContentStatus(currentTabId);
+    [contentStatus, spellingStatus] = await Promise.all([
+      getContentStatus(currentTabId),
+      getSpellingStatus()
+    ]);
     render();
   }
 
@@ -255,7 +296,10 @@
       settings = normalizeSettings(stored.settings || {});
       currentTabId = Number.isInteger(tabs[0]?.id) ? tabs[0].id : null;
       currentHostname = hostnameFromTab(tabs[0]);
-      contentStatus = await getContentStatus(currentTabId);
+      [contentStatus, spellingStatus] = await Promise.all([
+        getContentStatus(currentTabId),
+        getSpellingStatus()
+      ]);
       render();
     } catch (_error) {
       showError("Could not load your local settings.");

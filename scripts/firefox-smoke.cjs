@@ -156,7 +156,16 @@ function readOverlayExpression() {
       lastMarkerX: number("squiggleSageLastMarkerX"),
       lastMarkerY: number("squiggleSageLastMarkerY"),
       firstReplacementX: number("squiggleSageFirstReplacementX"),
-      firstReplacementY: number("squiggleSageFirstReplacementY")
+      firstReplacementY: number("squiggleSageFirstReplacementY"),
+      firstSpellingMarkerX: number("squiggleSageFirstSpellingMarkerX"),
+      firstSpellingMarkerY: number("squiggleSageFirstSpellingMarkerY"),
+      modalMarkerX: number("squiggleSageModalMarkerX"),
+      modalMarkerY: number("squiggleSageModalMarkerY"),
+      addToDictionaryX: number("squiggleSageAddToDictionaryX"),
+      addToDictionaryY: number("squiggleSageAddToDictionaryY"),
+      personalDictionaryCount: number("squiggleSagePersonalDictionaryCount"),
+      spellingIssueCount: number("squiggleSageSpellingIssueCount"),
+      spellingPersonalDictionaryCount: number("squiggleSageSpellingPersonalDictionaryCount")
     });
   })()`;
 }
@@ -383,7 +392,7 @@ async function run() {
       context,
       `document.querySelector("[contenteditable]")`
     );
-    await clickAt(client, context, richTextResult.lastMarkerX, richTextResult.lastMarkerY);
+    await clickAt(client, context, richTextResult.modalMarkerX, richTextResult.modalMarkerY);
     const richCard = await waitFor(
       client,
       context,
@@ -423,6 +432,154 @@ async function run() {
       context,
       `JSON.stringify(document.querySelector("[contenteditable]").innerText)`
     );
+
+    const spellingEditorRect = await evaluate(
+      client,
+      context,
+      `(() => {
+        const editor = document.querySelector("textarea");
+        editor.value = "I likededd this message.";
+        editor.scrollIntoView({ block: "center" });
+        const rect = editor.getBoundingClientRect();
+        return JSON.stringify({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
+      })()`
+    );
+    await clickAt(client, context, spellingEditorRect.x, spellingEditorRect.y);
+    const spellingOverlay = await waitFor(
+      client,
+      context,
+      `(() => {
+        const host = document.querySelector("#squiggle-sage-overlay-host");
+        if (!host || Number(host.dataset.squiggleSageIssueCount) !== 1 || !Number.isFinite(Number(host.dataset.squiggleSageFirstSpellingMarkerX))) {
+          return JSON.stringify(null);
+        }
+        return ${readOverlayExpression()};
+      })()`
+    );
+    await clickAt(client, context, spellingOverlay.firstSpellingMarkerX, spellingOverlay.firstSpellingMarkerY);
+    const spellingCard = await waitFor(
+      client,
+      context,
+      `(() => {
+        const host = document.querySelector("#squiggle-sage-overlay-host");
+        if (!host || host.dataset.squiggleSageCardVisible !== "true" || Number(host.dataset.squiggleSageReplacementCount) < 1) {
+          return JSON.stringify(null);
+        }
+        return ${readOverlayExpression()};
+      })()`
+    );
+    await evaluate(
+      client,
+      context,
+      `new Promise((resolve) => setTimeout(() => resolve(JSON.stringify(true)), 180))`
+    );
+    const spellingScreenshotPath = screenshotPath.replace(/\.png$/i, "-spelling-card.png");
+    const spellingScreenshot = await client.send("browsingContext.captureScreenshot", {
+      context,
+      format: { type: "png" },
+      origin: "viewport"
+    });
+    fs.writeFileSync(spellingScreenshotPath, Buffer.from(spellingScreenshot.data, "base64"));
+    await clickAt(client, context, spellingCard.firstReplacementX, spellingCard.firstReplacementY);
+    const spellingCorrection = await waitFor(
+      client,
+      context,
+      `JSON.stringify(document.querySelector("textarea").value === "I liked this message.")`
+    );
+    await waitFor(
+      client,
+      context,
+      `(() => {
+        const host = document.querySelector("#squiggle-sage-overlay-host");
+        return JSON.stringify(Boolean(host && Number(host.dataset.squiggleSageIssueCount) === 0));
+      })()`
+    );
+
+    await evaluate(
+      client,
+      context,
+      `(() => {
+        const editor = document.querySelector("textarea");
+        editor.value = "I use squigglesage daily.";
+        editor.dispatchEvent(new InputEvent("input", { bubbles: true, composed: true, inputType: "insertText" }));
+        return JSON.stringify(true);
+      })()`
+    );
+    const personalWordOverlay = await waitFor(
+      client,
+      context,
+      `(() => {
+        const host = document.querySelector("#squiggle-sage-overlay-host");
+        if (!host || Number(host.dataset.squiggleSageIssueCount) !== 1 || !Number.isFinite(Number(host.dataset.squiggleSageFirstSpellingMarkerX))) {
+          return JSON.stringify(null);
+        }
+        return ${readOverlayExpression()};
+      })()`
+    );
+    await clickAt(client, context, personalWordOverlay.firstSpellingMarkerX, personalWordOverlay.firstSpellingMarkerY);
+    const personalWordCard = await waitFor(
+      client,
+      context,
+      `(() => {
+        const host = document.querySelector("#squiggle-sage-overlay-host");
+        if (!host || host.dataset.squiggleSageCardVisible !== "true" || !Number.isFinite(Number(host.dataset.squiggleSageAddToDictionaryX))) {
+          return JSON.stringify(null);
+        }
+        return ${readOverlayExpression()};
+      })()`
+    );
+    await clickAt(client, context, personalWordCard.addToDictionaryX, personalWordCard.addToDictionaryY);
+    let personalDictionaryAdded;
+    try {
+      personalDictionaryAdded = await waitFor(
+        client,
+        context,
+        `(() => {
+          const host = document.querySelector("#squiggle-sage-overlay-host");
+          return JSON.stringify(Boolean(host && Number(host.dataset.squiggleSagePersonalDictionaryCount) === 1 && Number(host.dataset.squiggleSageIssueCount) === 0 && host.dataset.squiggleSageBadgeText === "✓"));
+        })()`
+      );
+    } catch (error) {
+      const diagnostics = await evaluate(client, context, readOverlayExpression());
+      throw new Error(`${error.message}\nPersonal dictionary diagnostics: ${JSON.stringify(diagnostics)}`);
+    }
+
+    await client.send("browsingContext.navigate", { context, url: testUrl, wait: "complete" });
+    await waitFor(
+      client,
+      context,
+      `JSON.stringify(document.documentElement.dataset.squiggleSageLoaded === "true")`
+    );
+    const persistedEditorRect = await evaluate(
+      client,
+      context,
+      `(() => {
+        const editor = document.querySelector("textarea");
+        editor.value = "I use squigglesage daily.";
+        const rect = editor.getBoundingClientRect();
+        return JSON.stringify({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
+      })()`
+    );
+    await clickAt(client, context, persistedEditorRect.x, persistedEditorRect.y);
+    const personalDictionaryPersisted = await waitFor(
+      client,
+      context,
+      `(() => {
+        const host = document.querySelector("#squiggle-sage-overlay-host");
+        return JSON.stringify(Boolean(host && Number(host.dataset.squiggleSageIssueCount) === 0 && host.dataset.squiggleSageBadgeText === "✓"));
+      })()`
+    );
+
+    await evaluate(
+      client,
+      context,
+      `(() => {
+        const editor = document.querySelector("[contenteditable]");
+        editor.textContent = "All good.";
+        const rect = editor.getBoundingClientRect();
+        return JSON.stringify({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
+      })()`
+    ).then((rect) => clickAt(client, context, rect.x, rect.y));
     await evaluate(
       client,
       context,
@@ -501,6 +658,11 @@ async function run() {
       && inputResult.markerCount >= 3
       && richTextResult.markerCount >= 4
       && richTextAfter.includes("i would have corrected")
+      && spellingOverlay.issueCount === 1
+      && spellingCard.replacementCount > 0
+      && spellingCorrection
+      && personalDictionaryAdded
+      && personalDictionaryPersisted
       && cleanEditorOverlay.badgeText === "✓"
       && removedEditorOverlayCleared
       && browserErrors.length === 0;
@@ -521,9 +683,15 @@ async function run() {
       richTextResult,
       richCard,
       richTextAfter,
+      spellingOverlay,
+      spellingCard,
+      spellingCorrection,
+      personalDictionaryAdded,
+      personalDictionaryPersisted,
       cleanEditorOverlay,
       removedEditorOverlayCleared,
       screenshotPath,
+      spellingScreenshotPath,
       browserErrors
     };
     console.log(JSON.stringify(receipt, null, 2));

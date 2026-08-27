@@ -57,6 +57,17 @@
               </span>
             </label>
 
+            <label class="toggle-row">
+              <span class="toggle-copy">
+                <strong>SquiggleSage spelling</strong>
+                <small>Show local English spelling suggestions in SquiggleSage cards.</small>
+              </span>
+              <span class="switch">
+                <input id="spelling" name="spelling" type="checkbox">
+                <span class="switch-track" aria-hidden="true"></span>
+              </span>
+            </label>
+
             <div class="toggle-grid">
               <label class="toggle-row compact-row">
                 <span class="toggle-copy"><strong>Grammar</strong><small>Sentence-level mistakes</small></span>
@@ -111,10 +122,45 @@
           </div>
         </section>
 
-        <section class="settings-card" aria-labelledby="sites-heading">
+        <section class="settings-card" aria-labelledby="dictionary-heading">
           <div class="section-heading">
             <div>
               <span class="section-number" aria-hidden="true">03</span>
+              <h2 id="dictionary-heading">Personal dictionary</h2>
+            </div>
+            <p>Add words that SquiggleSage should accept as correctly spelled.</p>
+          </div>
+
+          <div class="dictionary-controls">
+            <div id="dictionary-add-form" class="dictionary-add" role="group" aria-label="Add a personal word">
+              <div class="field">
+                <label class="field-label" for="dictionary-word">Add a word</label>
+                <span class="dictionary-add-row">
+                  <input id="dictionary-word" type="text" maxlength="64" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="For example, a surname">
+                  <button id="dictionary-add-button" class="button secondary-button" type="button">Add</button>
+                </span>
+                <small>Letters, apostrophes, and hyphens only. Words are saved in lowercase.</small>
+              </div>
+            </div>
+
+            <label class="field dictionary-search" for="dictionary-search">
+              <span>Search saved words</span>
+              <input id="dictionary-search" type="search" autocomplete="off" spellcheck="false" placeholder="Filter your dictionary">
+            </label>
+
+            <div class="dictionary-summary">
+              <p id="dictionary-count">0 personal words</p>
+              <p id="dictionary-status" role="status" aria-live="polite"></p>
+            </div>
+            <ul id="dictionary-list" class="dictionary-list" aria-label="Personal dictionary words"></ul>
+            <p id="dictionary-empty" class="dictionary-empty">No personal words yet.</p>
+          </div>
+        </section>
+
+        <section class="settings-card" aria-labelledby="sites-heading">
+          <div class="section-heading">
+            <div>
+              <span class="section-number" aria-hidden="true">04</span>
               <h2 id="sites-heading">Disabled websites</h2>
             </div>
             <p>SquiggleSage will stay inactive on these exact domains.</p>
@@ -130,7 +176,7 @@
         <section class="settings-card" aria-labelledby="rules-heading">
           <div class="section-heading">
             <div>
-              <span class="section-number" aria-hidden="true">04</span>
+              <span class="section-number" aria-hidden="true">05</span>
               <h2 id="rules-heading">Individual rules</h2>
             </div>
             <p>Fine-tune rules without turning off an entire feedback category.</p>

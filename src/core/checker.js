@@ -41,6 +41,36 @@
       description: "Suggests have after could, should, would, might, or must.",
     },
     {
+      id: "MODAL_BASE_FORM",
+      category: "grammar",
+      title: "Modal verb form",
+      description: "Suggests have after a modal followed by has or had.",
+    },
+    {
+      id: "YOUR_YOURE",
+      category: "grammar",
+      title: "Your/you're",
+      description: "Finds your where you're is required in a small set of constructions.",
+    },
+    {
+      id: "ITS_ITS",
+      category: "grammar",
+      title: "Its/it's",
+      description: "Finds its where the contraction it's is required.",
+    },
+    {
+      id: "THEN_THAN",
+      category: "grammar",
+      title: "Then/than",
+      description: "Finds then after an explicit comparative word.",
+    },
+    {
+      id: "REPEATED_PHRASE",
+      category: "grammar",
+      title: "Repeated phrase",
+      description: "Finds a likely accidental two-word phrase repeated immediately.",
+    },
+    {
       id: "A_AN_ARTICLE",
       category: "grammar",
       title: "A/an article",
@@ -69,6 +99,18 @@
       category: "typography",
       title: "Multiple spaces",
       description: "Collapses repeated horizontal spaces inside a line.",
+    },
+    {
+      id: "REPEATED_PUNCTUATION",
+      category: "typography",
+      title: "Repeated punctuation",
+      description: "Collapses repeated commas, semicolons, colons, question marks, or exclamation marks.",
+    },
+    {
+      id: "MISSING_SPACE_AFTER_SENTENCE",
+      category: "typography",
+      title: "Missing space after sentence punctuation",
+      description: "Adds a space at a clear boundary between sentences.",
     },
     {
       id: "WORDY_IN_ORDER_TO",
@@ -229,6 +271,8 @@
   function addBasicAgreement(text, issues) {
     var pluralExpression = /\b(I|you|we|they)([ \t]+)is\b/gi;
     var singularExpression = /\b(he|she|it)([ \t]+)are\b/gi;
+    var demonstrativeSingularExpression = /\b(this|that)([ \t]+)are\b/gi;
+    var demonstrativePluralExpression = /\b(these|those)([ \t]+)is\b/gi;
     var match;
 
     while ((match = pluralExpression.exec(text)) !== null) {
@@ -261,6 +305,36 @@
         )
       );
     }
+
+    while ((match = demonstrativeSingularExpression.exec(text)) !== null) {
+      var demonstrativeSingularOffset = match.index + match[1].length + match[2].length;
+
+      issues.push(
+        makeIssue(
+          "BASIC_SUBJECT_VERB_AGREEMENT",
+          text,
+          demonstrativeSingularOffset,
+          3,
+          "Use is with " + match[1] + ".",
+          ["is"]
+        )
+      );
+    }
+
+    while ((match = demonstrativePluralExpression.exec(text)) !== null) {
+      var demonstrativePluralOffset = match.index + match[1].length + match[2].length;
+
+      issues.push(
+        makeIssue(
+          "BASIC_SUBJECT_VERB_AGREEMENT",
+          text,
+          demonstrativePluralOffset,
+          2,
+          "Use are with " + match[1] + ".",
+          ["are"]
+        )
+      );
+    }
   }
 
   function addModalOf(text, issues) {
@@ -278,6 +352,100 @@
           match[0].length,
           "Use “have” after this modal verb.",
           [replacement]
+        )
+      );
+    }
+  }
+
+  function addModalBaseForm(text, issues) {
+    var expression = /\b(could|should|would|might|must)([ \t]+)(has|had)\b/gi;
+    var match;
+
+    while ((match = expression.exec(text)) !== null) {
+      var verbOffset = match.index + match[1].length + match[2].length;
+
+      issues.push(
+        makeIssue(
+          "MODAL_BASE_FORM",
+          text,
+          verbOffset,
+          match[3].length,
+          "Use have after this modal verb.",
+          ["have"]
+        )
+      );
+    }
+  }
+
+  function addYourYoure(text, issues) {
+    var expression = /\byour(?=[ \t]+(?:not\b|(?:definitely|probably|certainly|absolutely|clearly)[ \t]+(?:welcome|right|wrong|sure)\b))/gi;
+    var match;
+
+    while ((match = expression.exec(text)) !== null) {
+      issues.push(
+        makeIssue(
+          "YOUR_YOURE",
+          text,
+          match.index,
+          match[0].length,
+          "Use you're, meaning you are, in this construction.",
+          [preserveInitialCase(match[0], "you're")]
+        )
+      );
+    }
+  }
+
+  function addItsIts(text, issues) {
+    var expression = /\bits(?=[ \t]+(?:a\b|an\b|the\b|been\b|being\b|not\b|too\b))/gi;
+    var match;
+
+    while ((match = expression.exec(text)) !== null) {
+      issues.push(
+        makeIssue(
+          "ITS_ITS",
+          text,
+          match.index,
+          match[0].length,
+          "Use it's, meaning it is or it has, in this construction.",
+          [preserveInitialCase(match[0], "it's")]
+        )
+      );
+    }
+  }
+
+  function addThenThan(text, issues) {
+    var expression = /\b(?:more|less|fewer|better|worse|greater|smaller|older|younger|rather|other)([ \t]+)then\b/gi;
+    var match;
+
+    while ((match = expression.exec(text)) !== null) {
+      var offset = match.index + match[0].length - 4;
+
+      issues.push(
+        makeIssue(
+          "THEN_THAN",
+          text,
+          offset,
+          4,
+          "Use than in this comparison.",
+          ["than"]
+        )
+      );
+    }
+  }
+
+  function addRepeatedPhrases(text, issues) {
+    var expression = /\b([A-Za-z][A-Za-z'-]*[ \t]+[A-Za-z][A-Za-z'-]*)([ \t]+)\1\b/gi;
+    var match;
+
+    while ((match = expression.exec(text)) !== null) {
+      issues.push(
+        makeIssue(
+          "REPEATED_PHRASE",
+          text,
+          match.index,
+          match[0].length,
+          "This two-word phrase appears twice in a row.",
+          [match[1]]
         )
       );
     }
@@ -424,6 +592,42 @@
     }
   }
 
+  function addRepeatedPunctuation(text, issues) {
+    var expression = /([,;:!?])\1+/g;
+    var match;
+
+    while ((match = expression.exec(text)) !== null) {
+      issues.push(
+        makeIssue(
+          "REPEATED_PUNCTUATION",
+          text,
+          match.index,
+          match[0].length,
+          "Use this punctuation mark only once.",
+          [match[1]]
+        )
+      );
+    }
+  }
+
+  function addMissingSpaceAfterSentence(text, issues) {
+    var expression = /([.!?])(?=(?:I\b|We\b|You\b|He\b|She\b|It\b|They\b|This\b|That\b|These\b|Those\b|There\b|Here\b|The\b|A\b|An\b|My\b|Your\b))/g;
+    var match;
+
+    while ((match = expression.exec(text)) !== null) {
+      issues.push(
+        makeIssue(
+          "MISSING_SPACE_AFTER_SENTENCE",
+          text,
+          match.index,
+          1,
+          "Add a space after this sentence punctuation.",
+          [match[1] + " "]
+        )
+      );
+    }
+  }
+
   function addPhraseIssues(text, issues, ruleId, expression, replacement, message) {
     var match;
 
@@ -445,11 +649,18 @@
     REPEATED_WORD: addRepeatedWords,
     BASIC_SUBJECT_VERB_AGREEMENT: addBasicAgreement,
     MODAL_OF: addModalOf,
+    MODAL_BASE_FORM: addModalBaseForm,
+    YOUR_YOURE: addYourYoure,
+    ITS_ITS: addItsIts,
+    THEN_THAN: addThenThan,
+    REPEATED_PHRASE: addRepeatedPhrases,
     A_AN_ARTICLE: addArticleIssues,
     LOWERCASE_I: addLowercaseI,
     SENTENCE_START_CASE: addSentenceStartCase,
     SPACE_BEFORE_PUNCTUATION: addSpaceBeforePunctuation,
     MULTIPLE_SPACES: addMultipleSpaces,
+    REPEATED_PUNCTUATION: addRepeatedPunctuation,
+    MISSING_SPACE_AFTER_SENTENCE: addMissingSpaceAfterSentence,
     WORDY_IN_ORDER_TO: function (text, issues) {
       addPhraseIssues(
         text,

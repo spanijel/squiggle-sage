@@ -563,6 +563,8 @@
           const marker = makeElement("button", `marker marker--${issue.category || "grammar"}`);
           marker.type = "button";
           marker.tabIndex = -1;
+          marker.dataset.issueCategory = issue.category || "grammar";
+          marker.dataset.ruleId = issue.ruleId || "";
           marker.setAttribute("aria-label", issue.message || "Writing suggestion");
           Object.assign(marker.style, {
             left: `${rect.left}px`,
@@ -580,6 +582,8 @@
       const markers = this.layer.querySelectorAll(".marker");
       const firstMarker = markers[0];
       const lastMarker = markers[markers.length - 1];
+      const firstSpellingMarker = this.layer.querySelector('.marker[data-issue-category="spelling"]');
+      const modalMarker = this.layer.querySelector('.marker[data-rule-id="MODAL_OF"]');
       this.host.dataset.squiggleSageIssueCount = String(issues.length);
       this.host.dataset.squiggleSageMarkerCount = String(markers.length);
       if (firstMarker) {
@@ -598,7 +602,22 @@
         delete this.host.dataset.squiggleSageLastMarkerX;
         delete this.host.dataset.squiggleSageLastMarkerY;
       }
+      this.recordMarkerCenter("FirstSpelling", firstSpellingMarker);
+      this.recordMarkerCenter("Modal", modalMarker);
       this.positionBadge(element, issues.length);
+    }
+
+    recordMarkerCenter(name, marker) {
+      const xKey = `squiggleSage${name}MarkerX`;
+      const yKey = `squiggleSage${name}MarkerY`;
+      if (marker) {
+        const rect = marker.getBoundingClientRect();
+        this.host.dataset[xKey] = String(rect.left + rect.width / 2);
+        this.host.dataset[yKey] = String(rect.top + rect.height / 2);
+      } else {
+        delete this.host.dataset[xKey];
+        delete this.host.dataset[yKey];
+      }
     }
 
     positionBadge(element, count) {
@@ -639,8 +658,8 @@
       this.card.replaceChildren(
         this.makeCloseButton(),
         makeElement("div", "category", "SquiggleSage"),
-        makeElement("div", "message", "No local grammar suggestions in this field."),
-        makeElement("div", "privacy", "Firefox handles red spelling underlines locally.")
+        makeElement("div", "message", "No local writing suggestions in this field."),
+        makeElement("div", "privacy", "SquiggleSage and Firefox spelling both run locally.")
       );
       this.positionCard(anchor);
     }
@@ -674,7 +693,18 @@
         this.hideCard();
         this.onAction({ type: "disable-rule", issue });
       });
-      actions.append(ignore, disable);
+      actions.append(ignore);
+      if (issue.category === "spelling") {
+        const addToDictionary = makeElement("button", "secondary add-to-dictionary", "Add to dictionary");
+        addToDictionary.type = "button";
+        addToDictionary.addEventListener("click", () => {
+          this.hideCard();
+          this.onAction({ type: "add-to-dictionary", issue });
+        });
+        actions.append(addToDictionary);
+      } else {
+        actions.append(disable);
+      }
       const children = [this.makeCloseButton(), category, message];
       if (replacements.childElementCount) {
         children.push(replacements);
@@ -709,6 +739,7 @@
       left = Math.max(8, left);
       Object.assign(this.card.style, { left: `${left}px`, top: `${top}px` });
       const firstReplacement = this.card.querySelector(".replacement");
+      const addToDictionary = this.card.querySelector(".add-to-dictionary");
       this.host.dataset.squiggleSageCardVisible = "true";
       this.host.dataset.squiggleSageReplacementCount = String(
         this.card.querySelectorAll(".replacement").length
@@ -725,6 +756,14 @@
         delete this.host.dataset.squiggleSageFirstReplacementX;
         delete this.host.dataset.squiggleSageFirstReplacementY;
       }
+      if (addToDictionary) {
+        const addRect = addToDictionary.getBoundingClientRect();
+        this.host.dataset.squiggleSageAddToDictionaryX = String(addRect.left + addRect.width / 2);
+        this.host.dataset.squiggleSageAddToDictionaryY = String(addRect.top + addRect.height / 2);
+      } else {
+        delete this.host.dataset.squiggleSageAddToDictionaryX;
+        delete this.host.dataset.squiggleSageAddToDictionaryY;
+      }
     }
 
     hideCard() {
@@ -734,6 +773,8 @@
       this.host.dataset.squiggleSageReplacementCount = "0";
       delete this.host.dataset.squiggleSageFirstReplacementX;
       delete this.host.dataset.squiggleSageFirstReplacementY;
+      delete this.host.dataset.squiggleSageAddToDictionaryX;
+      delete this.host.dataset.squiggleSageAddToDictionaryY;
     }
 
     resetDiagnostics() {
@@ -750,8 +791,14 @@
       delete this.host.dataset.squiggleSageFirstMarkerY;
       delete this.host.dataset.squiggleSageLastMarkerX;
       delete this.host.dataset.squiggleSageLastMarkerY;
+      delete this.host.dataset.squiggleSageFirstSpellingMarkerX;
+      delete this.host.dataset.squiggleSageFirstSpellingMarkerY;
+      delete this.host.dataset.squiggleSageModalMarkerX;
+      delete this.host.dataset.squiggleSageModalMarkerY;
       delete this.host.dataset.squiggleSageFirstReplacementX;
       delete this.host.dataset.squiggleSageFirstReplacementY;
+      delete this.host.dataset.squiggleSageAddToDictionaryX;
+      delete this.host.dataset.squiggleSageAddToDictionaryY;
     }
 
     clear() {

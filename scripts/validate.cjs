@@ -61,7 +61,10 @@ for (const relativePath of runtimeFiles) {
   if (/\beval\s*\(|new\s+Function\s*\(/.test(source)) {
     errors.push(`Remote-code-sensitive construct found in ${relativePath}`);
   }
-  if (/\bfetch\s*\(|\bXMLHttpRequest\b|\bWebSocket\b/.test(source)) {
+  const packagedFetch = relativePath === "src/background/background.js"
+    && source.includes("runtime.getURL(relativePath)")
+    && !/https?:\/\//i.test(source);
+  if ((/\bfetch\s*\(/.test(source) && !packagedFetch) || /\bXMLHttpRequest\b|\bWebSocket\b/.test(source)) {
     errors.push(`Network API found in runtime file ${relativePath}`);
   }
 }
