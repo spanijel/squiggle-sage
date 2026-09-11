@@ -314,6 +314,9 @@
       this.activeElement = null;
       this.badgeOffsets = new WeakMap();
       this.badgeDrag = null;
+      this.badgeElement = null;
+      this.badgeDismissTimer = null;
+      this.badgeDismissed = false;
       this.suppressBadgeClick = false;
       this.canUndo = false;
       this.returnFocus = null;
@@ -329,6 +332,7 @@
         .marker:focus-visible, .badge:focus-visible, .replacement:focus-visible, .secondary:focus-visible { outline: 2px solid #0f766e; outline-offset: 2px; }
         .badge { align-items: center; background: #0f766e; border: 2px solid #fff; border-radius: 999px; box-shadow: 0 3px 12px #0004; color: #fff; cursor: grab; display: flex; font: 700 12px/1 system-ui, sans-serif; height: 28px; justify-content: center; min-width: 28px; padding: 0 7px; pointer-events: auto; position: fixed; touch-action: none; user-select: none; }
         .badge[data-dragging="true"] { cursor: grabbing; }
+        .badge[hidden] { display: none; }
         .card { background: Canvas; border: 1px solid color-mix(in srgb, CanvasText 18%, transparent); border-radius: 12px; box-shadow: 0 14px 38px #0004; color: CanvasText; display: grid; font: 14px/1.35 system-ui, sans-serif; gap: 10px; max-width: min(340px, calc(100vw - 16px)); padding: 14px; pointer-events: auto; position: fixed; width: 320px; }
         .card[hidden] { display: none; }
         .close { align-items: center; background: transparent; border: 0; border-radius: 999px; color: CanvasText; cursor: pointer; display: flex; font: 700 18px/1 system-ui, sans-serif; height: 28px; justify-content: center; padding: 0; position: absolute; right: 7px; top: 7px; width: 28px; }
@@ -732,7 +736,29 @@
       }
     }
 
+    resetBadgeDismissal() {
+      clearTimeout(this.badgeDismissTimer);
+      this.badgeDismissTimer = null;
+      this.badgeDismissed = false;
+      this.badgeElement = null;
+    }
+
+    hideBadge() {
+      this.badge.hidden = true;
+      this.host.dataset.squiggleSageBadgeText = "";
+      delete this.host.dataset.squiggleSageBadgeX;
+      delete this.host.dataset.squiggleSageBadgeY;
+    }
+
     positionBadge(element, count) {
+      if (this.badgeElement !== element || count > 0) {
+        this.resetBadgeDismissal();
+        this.badgeElement = element;
+      }
+      if (this.badgeDismissed) {
+        this.hideBadge();
+        return;
+      }
       const rect = element.getBoundingClientRect();
       if (
         rect.width < 36 ||
@@ -742,10 +768,7 @@
         rect.bottom <= 0 ||
         rect.top >= innerHeight
       ) {
-        this.badge.hidden = true;
-        this.host.dataset.squiggleSageBadgeText = "";
-        delete this.host.dataset.squiggleSageBadgeX;
-        delete this.host.dataset.squiggleSageBadgeY;
+        this.hideBadge();
         return;
       }
       this.badge.hidden = false;
@@ -754,6 +777,16 @@
       this.host.dataset.squiggleSageBadgeText = this.badge.textContent;
       this.host.dataset.squiggleSageState = "local";
       this.badge.title = `${count} local writing suggestion${count === 1 ? "" : "s"}. Press Enter to open; Alt+Left/Right navigates issues.`;
+      if (!count && this.badgeDismissTimer === null) {
+        this.badgeDismissTimer = setTimeout(() => {
+          this.badgeDismissTimer = null;
+          this.badgeDismissed = true;
+          if (this.shadow.activeElement === this.badge) {
+            this.activeElement?.focus({ preventScroll: true });
+          }
+          this.hideBadge();
+        }, 1000);
+      }
       const badgeRect = this.badge.getBoundingClientRect();
       const base = this.defaultBadgePosition(rect, badgeRect.width, badgeRect.height);
       const offset = this.badgeOffsets.get(element);
@@ -972,6 +1005,7 @@
     }
 
     clear() {
+      this.resetBadgeDismissal();
       this.issues.clear();
       this.activeElement = null;
       this.layer.replaceChildren();
@@ -981,6 +1015,7 @@
     }
 
     destroy() {
+      this.resetBadgeDismissal();
       document.removeEventListener("pointerdown", this.onDocumentPointerDown, true);
       document.removeEventListener("keydown", this.onDocumentKeyDown, true);
       this.host.remove();

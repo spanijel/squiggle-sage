@@ -1,6 +1,6 @@
 # SquiggleSage capabilities
 
-Version `0.2.1` provides local spelling and writing assistance for ordinary Firefox text editors.
+Version `0.2.2` provides local spelling and writing assistance for ordinary Firefox text editors.
 
 ## Current capabilities
 
@@ -16,7 +16,7 @@ Version `0.2.1` provides local spelling and writing assistance for ordinary Fire
 | Style | Three conservative wordiness rules |
 | Suggestions | Prominent red squiggles, clickable cards, guarded replacement, undo last correction, ignore once, **Ignore for session**, and rule disablement |
 | Keyboard use | Issue markers, suggestion cards, corrections, dismissals, and undo are operable while the relevant SquiggleSage control is focused |
-| Editor badge | Draggable issue count for the active editor, with keyboard repositioning |
+| Editor badge | Draggable issue count for the active editor, with keyboard repositioning; the zero-issue checkmark disappears after one second and the badge returns for new suggestions |
 | Controls | Global enablement, exact-hostname exclusions, categories, individual rules, and typing delay |
 | Privacy | Processing occurs inside Firefox; the extension has no network requests, telemetry, or editor-text persistence |
 | Page access | Content scripts run on HTTP, HTTPS, and local-file pages, including frames, to find the focused supported editor |

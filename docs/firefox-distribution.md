@@ -36,9 +36,9 @@ The XPI contains only the runtime files declared by `scripts/build.cjs`, includi
 5. Complete Mozilla's privacy and licensing declarations using `PRIVACY.md`, `LICENSE`, `NOTICE.md`, and the packaged third-party license files as the source of truth.
 6. Explain that content scripts need HTTP, HTTPS, and local-file page access to find the focused supported editor, while all processing remains local.
 7. Use [amo-submission.md](amo-submission.md) for the listing copy, permission explanation, reviewer notes, build-tool answer, release notes, and test procedure.
-8. Complete the version details and submit version 0.2.1 for validation or review.
+8. Complete the version details and submit version 0.2.2 for validation or review.
 
-After approval, Mozilla signs version 0.2.1 and publishes it through the existing listing. Firefox installations obtained from that listing then receive the update through Mozilla's normal update channel.
+After approval, Mozilla signs version 0.2.2 and publishes it through the existing listing. Firefox installations obtained from that listing then receive the update through Mozilla's normal update channel.
 
 Do not paste Mozilla API keys or secrets into chat, source files, Git history, or shell commands.
 

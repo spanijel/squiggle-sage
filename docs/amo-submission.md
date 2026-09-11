@@ -17,7 +17,7 @@ Within each page or embedded frame, SquiggleSage processes the most recently foc
 
 SquiggleSage contains no login, account, analytics, telemetry, diagnostic logging, remote code, native messaging, or network request. All spelling and writing checks occur locally inside Firefox.
 
-Version 0.2.1 includes an exact, unmodified readable copy of the official [`typo-js@1.3.2` npm release](https://www.npmjs.com/package/typo-js/v/1.3.2). It is byte-for-byte identical to that release's `typo/typo.js`; npm metadata identifies upstream [`gitHead` commit `1d594ebd9a12f922fa4884324cfb67ae569e4095`](https://github.com/cfinke/Typo.js/commit/1d594ebd9a12f922fa4884324cfb67ae569e4095). Version 0.2.1 also includes an American-English SCOWL/Hunspell dictionary from pinned upstream commit [`8cfea406b505e4d7df52d5a19bce525df98c54ab`](https://github.com/wooorm/dictionaries/commit/8cfea406b505e4d7df52d5a19bce525df98c54ab). License texts are included at `src/vendor/typo-js/LICENSE.txt` and `src/data/en-us/LICENSE.txt`; provenance and exact hashes are documented in `docs/dictionary-decision.md` and `NOTICE.md`.
+Version 0.2.2 includes an exact, unmodified readable copy of the official [`typo-js@1.3.2` npm release](https://www.npmjs.com/package/typo-js/v/1.3.2). It is byte-for-byte identical to that release's `typo/typo.js`; npm metadata identifies upstream [`gitHead` commit `1d594ebd9a12f922fa4884324cfb67ae569e4095`](https://github.com/cfinke/Typo.js/commit/1d594ebd9a12f922fa4884324cfb67ae569e4095). Version 0.2.2 also includes an American-English SCOWL/Hunspell dictionary from pinned upstream commit [`8cfea406b505e4d7df52d5a19bce525df98c54ab`](https://github.com/wooorm/dictionaries/commit/8cfea406b505e4d7df52d5a19bce525df98c54ab). License texts are included at `src/vendor/typo-js/LICENSE.txt` and `src/data/en-us/LICENSE.txt`; provenance and exact hashes are documented in `docs/dictionary-decision.md` and `NOTICE.md`.
 
 The background script reads the complete packaged `.aff` and `.dic` files from extension URLs and always passes both strings to the Typo.js constructor. Typo.js therefore uses its preloaded-data construction path; its optional automatic loader is not invoked. SquiggleSage does not download code or data.
 
@@ -41,8 +41,13 @@ For Mozilla's question about code generators, minifiers, bundlers, template engi
 10. Choose **Ignore once** for one occurrence and verify that another occurrence can still be reported. Choose **Ignore for session** and verify that the same rule and original text are suppressed in the current tab until it reloads or closes.
 11. In settings, add a personal replacement such as `hte` to `the`. Enter `hte`, apply the offered correction, and verify that the pair remains after reload and can be removed from settings.
 12. Drag the badge, dismiss a suggestion with Escape, and verify that the overlay disappears when the editor is removed or the page is closed.
+13. Resolve all suggestions in an editor. Verify that the green checkmark disappears after one second, stays hidden when scrolling or resizing, and the numbered badge returns when a new issue is detected.
 
 Firefox-native spelling is optional and independent of SquiggleSage's bundled spelling checks.
+
+## Version 0.2.2 release notes
+
+Fixed the green checkmark staying on screen after all writing suggestions are resolved. It now disappears after one second and stays hidden during scrolling or resizing. The numbered badge returns when new suggestions are detected.
 
 ## Version 0.2.1 release notes
 

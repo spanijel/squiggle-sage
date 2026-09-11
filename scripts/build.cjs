@@ -57,6 +57,7 @@ const sourceEntries = [...new Set([
   "test/manual-smoke.html",
   "tests/background.test.js",
   "tests/checker.test.js",
+  "tests/highlighter.test.js",
   "tests/settings.test.js",
   "tests/spelling.test.js",
   "tests/vendor-policy.test.js"

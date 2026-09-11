@@ -2,7 +2,7 @@
 
 ## Decision
 
-SquiggleSage 0.2.1 uses:
+SquiggleSage 0.2.2 uses:
 
 - Official npm release [`typo-js@1.3.2`](https://www.npmjs.com/package/typo-js/v/1.3.2). Its npm `gitHead` is commit `1d594ebd9a12f922fa4884324cfb67ae569e4095` of `cfinke/Typo.js`.
 - The normalized American-English SCOWL/Hunspell dictionary from commit `8cfea406b505e4d7df52d5a19bce525df98c54ab` of `wooorm/dictionaries`, package `dictionary-en`.
@@ -30,7 +30,7 @@ The dictionary identifies itself as `en_US Hunspell Dictionary`, version `2020.1
 
 ## Vendored file hashes
 
-SHA-256 values for the exact files included in version 0.2.1:
+SHA-256 values for the exact files included in version 0.2.2:
 
 | File | SHA-256 |
 | --- | --- |
