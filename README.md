@@ -2,7 +2,7 @@
 
 SquiggleSage is a Firefox-first writing assistant whose checks run entirely inside the browser.
 
-Version `0.2.2` supports ordinary `textarea`, text `input`, and `contenteditable` editors. It adds bundled, local American-English spelling suggestions to SquiggleSage's existing grammar, capitalization, typography, and style checks. Firefox's native spelling underlines can remain enabled alongside SquiggleSage.
+Version `0.2.3` supports ordinary `textarea`, text `input`, and `contenteditable` editors. It adds bundled, local American-English spelling suggestions to SquiggleSage's existing grammar, capitalization, typography, and style checks. Firefox's native spelling underlines can remain enabled alongside SquiggleSage.
 
 ## What works now
 
@@ -57,6 +57,11 @@ Temporary add-ons disappear when Firefox restarts. Release and Beta Firefox requ
 The manifest declares no data collection. To provide automatic checks, SquiggleSage's content scripts run on HTTP, HTTPS, and local-file pages, including embedded frames and eligible blank frames. Firefox may describe this as access to data on all websites. Within each page or embedded frame, the access is used for the most recently focused or activated supported editor. The content script passes the active editor text through Firefox's internal extension messaging to the background spelling engine. The text is not sent over a network, logged, or persisted. SquiggleSage does not scan unrelated page text and declares no separate `host_permissions` or `optional_host_permissions` entry.
 
 ## Development
+
+The toolbar and extension identity use packaged PNG exports of the original S icon.
+For the public Mozilla Add-ons listing, upload [assets/icon-128.png](assets/icon-128.png) through its icon editor and save the listing.
+Listing artwork is managed separately from XPI version uploads.
+See [assets/README.md](assets/README.md) for the PNG export procedure.
 
 ```bash
 node scripts/validate.cjs

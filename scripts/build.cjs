@@ -17,6 +17,12 @@ const checksumPath = path.join(outputDirectory, checksumName);
 const packageEntries = [
   "manifest.json",
   "assets/icon.svg",
+  "assets/icon-16.png",
+  "assets/icon-32.png",
+  "assets/icon-48.png",
+  "assets/icon-64.png",
+  "assets/icon-96.png",
+  "assets/icon-128.png",
   "src/shared/defaults.js",
   "src/core/checker.js",
   "src/core/spelling.js",
@@ -42,6 +48,7 @@ const packageEntries = [
 const sourceEntries = [...new Set([
   ...packageEntries,
   ".gitignore",
+  "assets/README.md",
   "BUILD.md",
   "README.md",
   "docs/amo-submission.md",

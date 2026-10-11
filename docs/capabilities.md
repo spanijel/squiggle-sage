@@ -1,6 +1,6 @@
 # SquiggleSage capabilities
 
-Version `0.2.2` provides local spelling and writing assistance for ordinary Firefox text editors.
+Version `0.2.3` provides local spelling and writing assistance for ordinary Firefox text editors.
 
 ## Current capabilities
 

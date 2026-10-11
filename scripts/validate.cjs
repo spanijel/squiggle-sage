@@ -30,8 +30,23 @@ for (const contentScript of manifest.content_scripts || []) {
 }
 requireFile(manifest.action?.default_popup);
 requireFile(manifest.options_ui?.page);
-for (const icon of Object.values(manifest.icons || {})) {
+for (const [size, icon] of [
+  ...Object.entries(manifest.icons || {}),
+  ...Object.entries(manifest.action?.default_icon || {})
+]) {
   requireFile(icon);
+  if (icon.endsWith(".png") && fs.existsSync(path.join(root, icon))) {
+    const image = fs.readFileSync(path.join(root, icon));
+    if (
+      image.length < 24 ||
+      image.subarray(0, 8).toString("hex") !== "89504e470d0a1a0a" ||
+      image.toString("ascii", 12, 16) !== "IHDR" ||
+      image.readUInt32BE(16) !== Number(size) ||
+      image.readUInt32BE(20) !== Number(size)
+    ) {
+      errors.push(`Icon must be a ${size}x${size} PNG: ${icon}`);
+    }
+  }
 }
 
 if (manifest.host_permissions?.length) {
